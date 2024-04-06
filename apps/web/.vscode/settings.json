@@ -1,0 +1,12 @@
+{
+  "typescript.tsdk": "../../node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "typescript.preferences.autoImportFileExcludePatterns": [
+    "@types/node/assert.d.ts",
+    "next/dist/client/router.d.ts",
+    "next/router.d.ts",
+    "@radix-ui/**/react-*",
+    "graphql-scalars/typings/**/*",
+    "gql.tada/**/*"
+  ]
+}

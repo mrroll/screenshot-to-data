@@ -1,0 +1,14 @@
+{
+  // Custom config
+  "extends": ["@pluslabs/style-guide/tsconfig/node20"],
+  "compilerOptions": {
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "baseUrl": "."
+  },
+  "include": ["**/*.ts"],
+  "exclude": ["node_modules"]
+}

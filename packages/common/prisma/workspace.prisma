@@ -1,0 +1,1362 @@
+generator client {
+  provider        = "prisma-client-js"
+  output          = "../../../node_modules/.prisma/workspace-client"
+  previewFeatures = ["multiSchema", "relationJoins"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("WORKSPACE_DATABASE_URL")
+  schemas  = ["auth", "prod"]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model audit_log_entries {
+  instance_id String?   @db.Uuid
+  id          String    @id @db.Uuid
+  payload     Json?     @db.Json
+  created_at  DateTime? @db.Timestamptz(6)
+  ip_address  String    @default("") @db.VarChar(64)
+
+  @@index([instance_id], map: "audit_logs_instance_id_idx")
+  @@schema("auth")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model flow_state {
+  id                     String                @id @db.Uuid
+  user_id                String?               @db.Uuid
+  auth_code              String
+  code_challenge_method  code_challenge_method
+  code_challenge         String
+  provider_type          String
+  provider_access_token  String?
+  provider_refresh_token String?
+  created_at             DateTime?             @db.Timestamptz(6)
+  updated_at             DateTime?             @db.Timestamptz(6)
+  authentication_method  String
+  saml_relay_states      saml_relay_states[]
+
+  @@index([created_at(sort: Desc)])
+  @@index([auth_code], map: "idx_auth_code")
+  @@index([user_id, authentication_method], map: "idx_user_id_auth_method")
+  @@schema("auth")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model identities {
+  provider_id     String
+  user_id         String    @db.Uuid
+  identity_data   Json
+  provider        String
+  last_sign_in_at DateTime? @db.Timestamptz(6)
+  created_at      DateTime? @db.Timestamptz(6)
+  updated_at      DateTime? @db.Timestamptz(6)
+  email           String?   @default(dbgenerated("lower((identity_data ->> 'email'::text))"))
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  users           users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([provider_id, provider], map: "identities_provider_id_provider_unique")
+  @@index([email])
+  @@index([user_id])
+  @@schema("auth")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model instances {
+  id              String    @id @db.Uuid
+  uuid            String?   @db.Uuid
+  raw_base_config String?
+  created_at      DateTime? @db.Timestamptz(6)
+  updated_at      DateTime? @db.Timestamptz(6)
+
+  @@schema("auth")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mfa_amr_claims {
+  session_id            String        @db.Uuid
+  created_at            DateTime      @db.Timestamptz(6)
+  updated_at            DateTime      @db.Timestamptz(6)
+  authentication_method String
+  id                    String        @id(map: "amr_id_pk") @db.Uuid
+  sessions              auth_sessions @relation(fields: [session_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([session_id, authentication_method], map: "mfa_amr_claims_session_id_authentication_method_pkey")
+  @@schema("auth")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mfa_challenges {
+  id          String      @id @db.Uuid
+  factor_id   String      @db.Uuid
+  created_at  DateTime    @db.Timestamptz(6)
+  verified_at DateTime?   @db.Timestamptz(6)
+  ip_address  String      @db.Inet
+  mfa_factors mfa_factors @relation(fields: [factor_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "mfa_challenges_auth_factor_id_fkey")
+
+  @@index([created_at(sort: Desc)], map: "mfa_challenge_created_at_idx")
+  @@schema("auth")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mfa_factors {
+  id             String           @id @db.Uuid
+  user_id        String           @db.Uuid
+  friendly_name  String?
+  factor_type    factor_type
+  status         factor_status
+  created_at     DateTime         @db.Timestamptz(6)
+  updated_at     DateTime         @db.Timestamptz(6)
+  secret         String?
+  mfa_challenges mfa_challenges[]
+  users          users            @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id, created_at], map: "factor_id_created_at_idx")
+  @@index([user_id])
+  @@schema("auth")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model refresh_tokens {
+  instance_id String?        @db.Uuid
+  id          BigInt         @id @default(autoincrement())
+  token       String?        @unique(map: "refresh_tokens_token_unique") @db.VarChar(255)
+  user_id     String?        @db.VarChar(255)
+  revoked     Boolean?
+  created_at  DateTime?      @db.Timestamptz(6)
+  updated_at  DateTime?      @db.Timestamptz(6)
+  parent      String?        @db.VarChar(255)
+  session_id  String?        @db.Uuid
+  sessions    auth_sessions? @relation(fields: [session_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([session_id], map: "refresh_token_session_id")
+  @@index([instance_id])
+  @@index([instance_id, user_id])
+  @@index([parent])
+  @@index([session_id, revoked])
+  @@index([updated_at(sort: Desc)])
+  @@schema("auth")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model saml_providers {
+  id                String        @id @db.Uuid
+  sso_provider_id   String        @db.Uuid
+  entity_id         String        @unique
+  metadata_xml      String
+  metadata_url      String?
+  attribute_mapping Json?
+  created_at        DateTime?     @db.Timestamptz(6)
+  updated_at        DateTime?     @db.Timestamptz(6)
+  sso_providers     sso_providers @relation(fields: [sso_provider_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([sso_provider_id])
+  @@schema("auth")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model saml_relay_states {
+  id              String        @id @db.Uuid
+  sso_provider_id String        @db.Uuid
+  request_id      String
+  for_email       String?
+  redirect_to     String?
+  from_ip_address String?       @db.Inet
+  created_at      DateTime?     @db.Timestamptz(6)
+  updated_at      DateTime?     @db.Timestamptz(6)
+  flow_state_id   String?       @db.Uuid
+  flow_state      flow_state?   @relation(fields: [flow_state_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  sso_providers   sso_providers @relation(fields: [sso_provider_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([created_at(sort: Desc)])
+  @@index([for_email])
+  @@index([sso_provider_id])
+  @@schema("auth")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model schema_migrations {
+  version String @id @db.VarChar(255)
+
+  @@schema("auth")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model auth_sessions {
+  id             String           @id @db.Uuid
+  user_id        String           @db.Uuid
+  created_at     DateTime?        @db.Timestamptz(6)
+  updated_at     DateTime?        @db.Timestamptz(6)
+  factor_id      String?          @db.Uuid
+  aal            aal_level?
+  not_after      DateTime?        @db.Timestamptz(6)
+  refreshed_at   DateTime?        @db.Timestamp(6)
+  user_agent     String?
+  ip             String?          @db.Inet
+  tag            String?
+  mfa_amr_claims mfa_amr_claims[]
+  refresh_tokens refresh_tokens[]
+  users          users            @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([not_after(sort: Desc)])
+  @@index([user_id])
+  @@index([user_id, created_at], map: "user_id_created_at_idx")
+  @@map("sessions")
+  @@schema("auth")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model sso_domains {
+  id              String        @id @db.Uuid
+  sso_provider_id String        @db.Uuid
+  domain          String
+  created_at      DateTime?     @db.Timestamptz(6)
+  updated_at      DateTime?     @db.Timestamptz(6)
+  sso_providers   sso_providers @relation(fields: [sso_provider_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([sso_provider_id])
+  @@schema("auth")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model sso_providers {
+  id                String              @id @db.Uuid
+  resource_id       String?
+  created_at        DateTime?           @db.Timestamptz(6)
+  updated_at        DateTime?           @db.Timestamptz(6)
+  saml_providers    saml_providers[]
+  saml_relay_states saml_relay_states[]
+  sso_domains       sso_domains[]
+
+  @@schema("auth")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model users {
+  instance_id                 String?         @db.Uuid
+  id                          String          @id @db.Uuid
+  aud                         String?         @db.VarChar(255)
+  role                        String?         @db.VarChar(255)
+  email                       String?         @db.VarChar(255)
+  encrypted_password          String?         @db.VarChar(255)
+  email_confirmed_at          DateTime?       @db.Timestamptz(6)
+  invited_at                  DateTime?       @db.Timestamptz(6)
+  confirmation_token          String?         @db.VarChar(255)
+  confirmation_sent_at        DateTime?       @db.Timestamptz(6)
+  recovery_token              String?         @db.VarChar(255)
+  recovery_sent_at            DateTime?       @db.Timestamptz(6)
+  email_change_token_new      String?         @db.VarChar(255)
+  email_change                String?         @db.VarChar(255)
+  email_change_sent_at        DateTime?       @db.Timestamptz(6)
+  last_sign_in_at             DateTime?       @db.Timestamptz(6)
+  raw_app_meta_data           Json?
+  raw_user_meta_data          Json?
+  is_super_admin              Boolean?
+  created_at                  DateTime?       @db.Timestamptz(6)
+  updated_at                  DateTime?       @db.Timestamptz(6)
+  phone                       String?         @unique
+  phone_confirmed_at          DateTime?       @db.Timestamptz(6)
+  phone_change                String?         @default("")
+  phone_change_token          String?         @default("") @db.VarChar(255)
+  phone_change_sent_at        DateTime?       @db.Timestamptz(6)
+  confirmed_at                DateTime?       @default(dbgenerated("LEAST(email_confirmed_at, phone_confirmed_at)")) @db.Timestamptz(6)
+  email_change_token_current  String?         @default("") @db.VarChar(255)
+  email_change_confirm_status Int?            @default(0) @db.SmallInt
+  banned_until                DateTime?       @db.Timestamptz(6)
+  reauthentication_token      String?         @default("") @db.VarChar(255)
+  reauthentication_sent_at    DateTime?       @db.Timestamptz(6)
+  is_sso_user                 Boolean         @default(false)
+  deleted_at                  DateTime?       @db.Timestamptz(6)
+  identities                  identities[]
+  mfa_factors                 mfa_factors[]
+  auth_sessions               auth_sessions[]
+  prod_sessions               prod_sessions[]
+
+  @@index([instance_id])
+  @@schema("auth")
+}
+
+model adjustments {
+  id                               String                     @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  deal_id                          String?                    @db.Uuid
+  type                             String?                    @db.VarChar(255)
+  adjustment_date                  DateTime?                  @db.Timestamptz(6)
+  cycle_end_date                   DateTime?                  @db.Timestamptz(6)
+  hours                            Int?
+  historical_client_hourly_rate    Int?
+  historical_assistant_hourly_rate Int?
+  client_value                     Int?
+  assistant_value                  Int?
+  submitted_by_id                  String?                    @db.VarChar(255)
+  submitted_by_type                String?
+  magic_approved_by                String?                    @db.Uuid
+  status                           String?                    @db.VarChar(255)
+  bill_id                          String?                    @db.Uuid
+  payout_id                        String?                    @db.Uuid
+  client_external_notes            String?
+  internal_notes                   String?
+  created_at                       DateTime                   @default(now()) @db.Timestamptz(6)
+  updated_at                       DateTime                   @default(now()) @db.Timestamptz(6)
+  deleted_at                       DateTime?                  @db.Timestamptz(6)
+  reason_code                      String?                    @db.VarChar(255)
+  assistant_external_notes         String?                    @db.VarChar(255)
+  is_offcycle                      Boolean                    @default(false)
+  parent_root_cause                String                     @default("") @db.VarChar(255)
+  child_root_cause                 String                     @default("") @db.VarChar(255)
+  audit_notes                      String?                    @db.VarChar(255)
+  assistant_hours                  Decimal?                   @db.Decimal(5, 2)
+  client_hours                     Decimal?                   @db.Decimal(5, 2)
+  payout_status                    String?                    @db.VarChar(50)
+  bills                            bills?                     @relation(fields: [bill_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "adjustments_bill_id_foreign")
+  deals                            deals?                     @relation(fields: [deal_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "adjustments_deal_id_foreign")
+  payouts                          payouts?                   @relation(fields: [payout_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "adjustments_payout_id_foreign")
+  task_request_adjustments         task_request_adjustments[]
+
+  @@schema("prod")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model ai_rewrites {
+  requested_at    DateTime? @default(now()) @db.Timestamptz(6)
+  profile_id      String?   @db.Uuid
+  team_id         String?   @db.Uuid
+  model           String    @db.VarChar(255)
+  max_tokens      Int
+  prompt          String
+  original_text   String
+  complete_prompt String?
+  result          String?
+  profiles        profiles? @relation(fields: [profile_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "ai_rewrites_profile_id_foreign")
+  teams           teams?    @relation(fields: [team_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "ai_rewrites_team_id_foreign")
+
+  @@ignore
+  @@schema("prod")
+}
+
+model alternative_contact_preferences {
+  id                        String                      @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  name                      String?                     @db.VarChar(255)
+  email                     String?                     @db.VarChar(255)
+  phone_number              String?                     @db.VarChar(255)
+  communication_preferences communication_preferences[]
+
+  @@schema("prod")
+}
+
+model assistant_reviews {
+  id                                                String   @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  assistant_id                                      String   @db.Uuid
+  reviewer_id                                       String   @db.Uuid
+  overall_rating                                    Int
+  comment                                           String
+  created_at                                        DateTime @default(now()) @db.Timestamptz(6)
+  profiles_assistant_reviews_assistant_idToprofiles profiles @relation("assistant_reviews_assistant_idToprofiles", fields: [assistant_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "assistant_reviews_assistant_id_foreign")
+  profiles_assistant_reviews_reviewer_idToprofiles  profiles @relation("assistant_reviews_reviewer_idToprofiles", fields: [reviewer_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "assistant_reviews_reviewer_id_foreign")
+
+  @@schema("prod")
+}
+
+model balances {
+  id               String   @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  entity_id        String?  @db.Uuid
+  entity_type      String?  @db.VarChar(255)
+  type             String?  @db.VarChar(255)
+  type_id          String?
+  amount           Int?
+  running_balance  Int?
+  created_at       DateTime @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime @default(now()) @db.Timestamptz(6)
+  transaction_date DateTime @default(now()) @db.Timestamptz(6)
+
+  @@schema("prod")
+}
+
+model base_pay {
+  id                String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  deal_id           String?   @db.Uuid
+  cycle_end_date    DateTime  @db.Timestamptz(6)
+  cycle_hours       Int
+  status            String    @db.VarChar(255)
+  client_charge     Int       @default(0)
+  assistant_payment Int       @default(0)
+  created_at        DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime? @default(now()) @db.Timestamptz(6)
+  client_rate       Int?
+  assistant_rate    Int?
+  deals             deals?    @relation(fields: [deal_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "base_pay_deal_id_foreign")
+
+  @@schema("prod")
+}
+
+model bill_transactions {
+  id         String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  bill_id    String?   @db.Uuid
+  amount     Int?
+  type       String?
+  type_id    String?
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @default(now()) @db.Timestamptz(6)
+  bills      bills?    @relation(fields: [bill_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "bill_transactions_bill_id_foreign")
+
+  @@schema("prod")
+}
+
+model bills {
+  id                    String               @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  cycle_end             DateTime             @db.Timestamptz(6)
+  organization_id       String?              @db.Uuid
+  stripe_payment_intent String?              @db.VarChar(50)
+  total                 Int
+  bill_status           String               @db.VarChar(255)
+  charge_status         String               @db.VarChar(255)
+  generated_at          DateTime?            @db.Timestamptz(6)
+  charged_at            DateTime?            @db.Timestamptz(6)
+  detailed_status       String?
+  due_date              DateTime             @db.Timestamptz(6)
+  charge_id             String[]
+  applied_coupon_ids    String[]
+  cycle_type            String?              @db.VarChar(255)
+  adjustment_list       String[]
+  invoice_id            String               @unique(map: "unique_invoice_id") @db.VarChar(20)
+  breakdown             Json?                @db.Json
+  charge_attempts       Int?                 @default(0)
+  processing_at         DateTime?            @db.Timestamptz(6)
+  chargeable_amount     Int                  @default(0)
+  balance_id            String?              @db.Uuid
+  adjustments           adjustments[]
+  bill_transactions     bill_transactions[]
+  organizations         organizations?       @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "bills_organization_id_foreign")
+  deal_bills            deal_bills[]
+  task_request_bills    task_request_bills[]
+  transactions          transactions[]
+
+  @@schema("prod")
+}
+
+model channels {
+  id                                     String         @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  channel_chat_id                        String?        @unique
+  channel_username                       String?        @unique
+  user_id                                String?        @db.Uuid
+  name                                   String?
+  channel_id                             String?        @unique
+  owner                                  String?        @db.Uuid
+  organizations                          organizations? @relation(fields: [owner], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  profiles_channels_user_idToprofiles    profiles?      @relation("channels_user_idToprofiles", fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  profiles_profiles_channel_idTochannels profiles[]     @relation("profiles_channel_idTochannels")
+
+  @@index([owner], map: "channels_owner_index")
+  @@index([user_id], map: "channels_user_id_index")
+  @@schema("prod")
+}
+
+model client_notes {
+  id              String    @unique(map: "client_notes_id_unique") @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  created_by      String    @db.Uuid
+  client_id       String    @db.Uuid
+  organization_id String?   @db.Uuid
+  team_id         String?   @db.Uuid
+  title           String    @db.VarChar(255)
+  content         String
+  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+  updated_by      String?   @db.Uuid
+  updated_at      DateTime? @default(now()) @db.Timestamptz(6)
+  is_archived     Boolean?  @default(false)
+
+  @@schema("prod")
+}
+
+model client_organizations {
+  id              BigInt        @id @default(autoincrement())
+  joined_at       DateTime      @default(now()) @db.Timestamptz(6)
+  client_id       String        @db.Uuid
+  organization_id String        @db.Uuid
+  profiles        profiles      @relation(fields: [client_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  organizations   organizations @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([client_id], map: "client_organizations_client_id_index")
+  @@index([organization_id], map: "client_organizations_organization_id_index")
+  @@schema("prod")
+}
+
+model communication_preferences {
+  id                              String                           @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  timezone                        String?
+  schedule_preferences_id         String?                          @db.Uuid
+  preferred_communication_methods String[]
+  alternative_contact_id          String?                          @db.Uuid
+  preference_id                   String                           @db.Uuid
+  updated_at                      DateTime?                        @default(now()) @db.Timestamptz(6)
+  alternative_contact_preferences alternative_contact_preferences? @relation(fields: [alternative_contact_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "communication_preferences_alternative_contact_id_foreign")
+  preferences                     preferences                      @relation(fields: [preference_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "communication_preferences_preference_id_foreign")
+  schedule_preferences            schedule_preferences?            @relation(fields: [schedule_preferences_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "communication_preferences_schedule_preferences_id_foreign")
+
+  @@schema("prod")
+}
+
+model cycles {
+  id              String    @id @db.VarChar(255)
+  length_unit     String?   @db.VarChar(255)
+  length          Int?
+  upfront_payment Boolean?
+  end_date        DateTime? @db.Timestamptz(6)
+  payment_term    Int?
+  notes           String?   @db.VarChar(500)
+
+  @@schema("prod")
+}
+
+model daily_reports {
+  id                    String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  created_at            DateTime? @db.Timestamptz(6)
+  assistant_id          String?   @db.Uuid
+  team_id               String?   @db.Uuid
+  sessions              Int[]
+  tasks                 String[]  @db.Uuid
+  total_time            BigInt?
+  vcu_score             Float?    @db.Real
+  idle_duration         BigInt?
+  unproductive_duration BigInt?
+  profiles              profiles? @relation(fields: [assistant_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "daily_reports_assistant_id_foreign")
+  teams                 teams?    @relation(fields: [team_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "daily_reports_team_id_foreign")
+
+  @@unique([assistant_id, team_id, created_at], map: "daily_reports_assistant_id_team_id_created_at_unique")
+  @@schema("prod")
+}
+
+model deal_bills {
+  deal_id    String    @db.Uuid
+  bill_id    String    @db.Uuid
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  bills      bills     @relation(fields: [bill_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "deal_bills_bill_id_foreign")
+  deals      deals     @relation(fields: [deal_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "deal_bills_deal_id_foreign")
+
+  @@id([deal_id, bill_id])
+  @@schema("prod")
+}
+
+model deals {
+  id                       String         @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  assistant_id             String?        @db.Uuid
+  organization_id          String?        @db.Uuid
+  hubspot_deal_id          String?
+  start_date               DateTime?      @db.Timestamptz(6)
+  assistant_rate           Int?
+  client_rate              Int?
+  hired_hours              Int?
+  state                    String?        @db.VarChar(255)
+  paused_date              DateTime?      @db.Timestamptz(6)
+  end_date                 DateTime?      @db.Timestamptz(6)
+  churn_reason             String?
+  pause_reason             String?
+  auto_charge              Boolean?       @default(true)
+  cycle_id                 String?
+  notes                    String?
+  created_at               DateTime       @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime       @default(now()) @db.Timestamptz(6)
+  deleted_at               DateTime?      @db.Timestamptz(6)
+  resume_date              DateTime?      @db.Timestamptz(6)
+  churn_date               DateTime?      @db.Timestamptz(6)
+  onboarding_schedule_date DateTime?      @db.Timestamptz(6)
+  adjustments              adjustments[]
+  base_pay                 base_pay[]
+  deal_bills               deal_bills[]
+  profiles                 profiles?      @relation(fields: [assistant_id], references: [id], onUpdate: NoAction, map: "deals_assistant_id_foreign")
+  organizations            organizations? @relation(fields: [organization_id], references: [id], onUpdate: NoAction, map: "deals_organization_id_foreign")
+  payouts                  payouts[]
+
+  @@schema("prod")
+}
+
+model deel {
+  id                 String    @id @db.VarChar(255)
+  internal_id        String?   @db.VarChar(255)
+  assistant_id       String?   @db.VarChar(255)
+  created_at         DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime? @default(now()) @db.Timestamptz(6)
+  contract_name      String?   @db.VarChar(255)
+  rate               Float?    @db.Real
+  deel_email_address String?   @db.VarChar(255)
+
+  @@schema("prod")
+}
+
+model email_participants {
+  id            BigInt    @id @default(autoincrement())
+  created_at    DateTime? @default(now()) @db.Timestamptz(6)
+  email_id      String    @db.VarChar
+  email_address String    @db.VarChar
+  type          String    @db.VarChar
+  team_id       String?   @db.Uuid
+  emails        emails    @relation(fields: [email_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  teams         teams?    @relation(fields: [team_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("prod")
+}
+
+model emails {
+  created_at         DateTime?            @default(now()) @db.Timestamptz(6)
+  subject            String?              @db.VarChar
+  visible_text       String?
+  full_body          String?
+  timestamp          DateTime?            @db.Timestamptz(6)
+  id                 String               @id @unique @db.VarChar
+  attachments        Json[]               @db.Json
+  references         String[]             @default([]) @db.VarChar
+  inReplyTo          String?              @db.VarChar
+  is_read            Boolean?             @default(false)
+  email_participants email_participants[]
+
+  @@schema("prod")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model events {
+  id          String         @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  created_at  DateTime?      @default(now()) @db.Timestamptz(6)
+  user_id     String?        @db.Uuid
+  action_type String         @db.VarChar
+  payload     Json?          @default("null") @db.Json
+  action_name String?        @db.VarChar
+  task_id     String?        @db.Uuid
+  session_id  BigInt?
+  updated_at  DateTime?      @default(now()) @db.Timestamptz(6)
+  sessions    prod_sessions? @relation(fields: [session_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tasks       tasks?         @relation(fields: [task_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  profiles    profiles?      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([action_name], map: "events_action_name_index")
+  @@index([id], map: "events_id_index")
+  @@index([session_id], map: "events_session_id_index")
+  @@index([task_id], map: "events_task_id_index")
+  @@index([user_id], map: "events_user_id_index")
+  @@schema("prod")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model events_archive {
+  id          String?   @db.Uuid
+  created_at  DateTime? @db.Timestamptz(6)
+  user_id     String?   @db.Uuid
+  action_type String?   @db.VarChar
+  payload     Json?     @db.Json
+  action_name String?   @db.VarChar
+  task_id     String?   @db.Uuid
+  session_id  BigInt?
+  updated_at  DateTime? @db.Timestamptz(6)
+
+  @@ignore
+  @@schema("prod")
+}
+
+model integration_team_access {
+  id             String       @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  integration_id String       @db.Uuid
+  team_id        String?      @db.Uuid
+  calendar_id    String?      @db.VarChar(255)
+  created_at     DateTime?    @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime?    @default(now()) @db.Timestamptz(6)
+  account_id     String?      @db.Uuid
+  profiles       profiles?    @relation(fields: [account_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "integration_team_access_account_id_foreign")
+  integrations   integrations @relation(fields: [integration_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "integration_team_access_integration_id_foreign")
+  teams          teams?       @relation(fields: [team_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "integration_team_access_team_id_foreign")
+
+  @@schema("prod")
+}
+
+model integrations {
+  id                      String                    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  type                    String                    @db.VarChar(255)
+  status                  String                    @default("pending") @db.VarChar(255)
+  metadata                Json?                     @default("{}")
+  user_id                 String                    @db.Uuid
+  access_token            String?                   @db.VarChar(255)
+  refresh_token           String?                   @db.VarChar(255)
+  expiry_date             DateTime?                 @db.Timestamptz(6)
+  scope                   String?                   @db.VarChar(255)
+  email                   String?                   @db.VarChar(255)
+  account_type            String?                   @db.VarChar(255)
+  created_at              DateTime                  @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime                  @default(now()) @db.Timestamptz(6)
+  integration_team_access integration_team_access[]
+  profiles                profiles                  @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "integrations_user_id_foreign")
+
+  @@schema("prod")
+}
+
+model jobs {
+  id           String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  queue_name   String?   @db.VarChar(255)
+  status       String    @default("PENDING") @db.VarChar(255)
+  error        String?   @db.VarChar(255)
+  is_locked    Boolean   @default(false)
+  payload      Json?     @db.Json
+  processed_at DateTime? @db.Timestamptz(6)
+  created_at   DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@schema("prod")
+}
+
+model knex_migrations {
+  id             Int       @id @default(autoincrement())
+  name           String?   @db.VarChar(255)
+  batch          Int?
+  migration_time DateTime? @db.Timestamptz(6)
+
+  @@schema("prod")
+}
+
+model knex_migrations_lock {
+  index     Int  @id @default(autoincrement())
+  is_locked Int?
+
+  @@schema("prod")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model messages {
+  id          String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  team_id     String?   @db.Uuid
+  user_id     String?   @db.Uuid
+  contents    String?
+  timestamp   DateTime? @default(now()) @db.Timestamp(6)
+  subject     String?   @db.VarChar
+  email_id    String?   @unique @db.VarChar
+  attachments Json[]    @db.Json
+  teams       teams?    @relation(fields: [team_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "messages_team_id_foreign")
+  profiles    profiles? @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("prod")
+}
+
+model notes {
+  id                                  String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  created_at                          DateTime? @default(now()) @db.Timestamptz(6)
+  team_id                             String?   @db.Uuid
+  contents                            String?
+  title                               String?
+  is_sensitive                        Boolean?  @default(false)
+  created_by                          String?   @db.Uuid
+  updated_at                          DateTime? @db.Timestamptz(6)
+  show_client                         Boolean?  @default(false)
+  updated_by                          String?   @db.Uuid
+  profiles_notes_created_byToprofiles profiles? @relation("notes_created_byToprofiles", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "notes_author_id_fkey")
+  teams                               teams?    @relation(fields: [team_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "notes_team_id_foreign")
+  profiles_notes_updated_byToprofiles profiles? @relation("notes_updated_byToprofiles", fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "prod_notes_updated_by_fkey")
+
+  @@index([team_id], map: "notes_team_id_index")
+  @@schema("prod")
+}
+
+model notifications {
+  id           String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  created_at   DateTime? @default(now()) @db.Timestamptz(6)
+  type         String    @db.VarChar(200)
+  title        String?
+  details      Json?
+  profile_id   String?   @db.Uuid
+  account_type String?
+  feature_flag String?
+  profiles     profiles? @relation(fields: [profile_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "notifications_profile_id_foreign")
+
+  @@schema("prod")
+}
+
+model organizations {
+  id                                 String                               @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  created_at                         DateTime                             @default(now()) @db.Timestamptz(6)
+  name                               String                               @unique
+  active                             Boolean                              @default(false)
+  stripe_customer_id                 String?                              @db.VarChar(255)
+  contact_email                      String?
+  status                             String?                              @db.VarChar(255)
+  bill_sequence_id                   Int                                  @default(autoincrement())
+  auto_charge                        Boolean?                             @default(true)
+  invoice_recipients                 Json?                                @db.Json
+  bills                              bills[]
+  channels                           channels[]
+  client_organizations               client_organizations[]
+  deals                              deals[]
+  participants                       participants[]
+  task_request_stripe_payment_intent task_request_stripe_payment_intent[]
+  teams                              teams[]
+
+  @@schema("prod")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model participants {
+  id              String         @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  joined_at       DateTime?      @default(now()) @db.Timestamptz(6)
+  user_id         String         @db.Uuid
+  team_id         String?        @db.Uuid
+  organization_id String?        @db.Uuid
+  organizations   organizations? @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  teams           teams?         @relation(fields: [team_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "participants_team_id_foreign")
+  profiles        profiles       @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("prod")
+}
+
+model payouts {
+  id                   String                 @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  deal_id              String?                @db.Uuid
+  cycle_start_date     DateTime               @db.Timestamptz(6)
+  cycle_end_date       DateTime               @db.Timestamptz(6)
+  assistant_id         String?                @db.Uuid
+  deel_contract_id     String?                @db.VarChar(255)
+  total                Int
+  status               String                 @db.VarChar(255)
+  bill_id              String?                @db.Uuid
+  adjustment_list      String?
+  created_at           DateTime               @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime               @default(now()) @db.Timestamptz(6)
+  due_date             DateTime?              @db.Date
+  color                String?                @db.VarChar(20)
+  assistant_name       String?                @db.VarChar(255)
+  assistant_email      String?                @db.VarChar(255)
+  internal_notes       String?
+  user_friendly_id     String?                @db.VarChar(20)
+  breakdown            Json?                  @db.Json
+  payout_date          DateTime?              @db.Timestamptz(6)
+  adjustments          adjustments[]
+  profiles             profiles?              @relation(fields: [assistant_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "payouts_assistant_id_foreign")
+  deals                deals?                 @relation(fields: [deal_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "payouts_deal_id_foreign")
+  task_request_payouts task_request_payouts[]
+  transactions         transactions[]
+
+  @@schema("prod")
+}
+
+model pod_members {
+  id           String    @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  pod_id       String    @db.Uuid
+  assistant_id String    @db.Uuid
+  joined_at    DateTime? @default(now()) @db.Timestamptz(6)
+  profiles     profiles  @relation(fields: [assistant_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "pod_members_assistant_id_foreign")
+  pods         pods      @relation(fields: [pod_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "pod_members_pod_id_foreign")
+
+  @@id([id, pod_id, assistant_id])
+  @@unique([pod_id, assistant_id], map: "pod_members_pod_id_assistant_id_unique")
+  @@index([assistant_id], map: "pod_members_assistant_id_index")
+  @@schema("prod")
+}
+
+model pods {
+  id          String        @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  pod_name    String?       @db.VarChar(255)
+  pod_lead_id String?       @db.Uuid
+  active      Boolean       @default(true)
+  created_at  DateTime?     @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime?     @default(now()) @db.Timestamptz(6)
+  pod_members pod_members[]
+
+  @@schema("prod")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model preferences {
+  id                        String                      @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  entity_type               String
+  entity_id                 String                      @db.Uuid
+  created_at                DateTime?                   @default(now()) @db.Timestamptz(6)
+  updated_at                DateTime?                   @default(now()) @db.Timestamptz(6)
+  communication_preferences communication_preferences[]
+
+  @@unique([entity_type, entity_id], map: "preferences_entity_type_entity_id_unique")
+  @@schema("prod")
+}
+
+model processed_stripe_webhook_events {
+  id         String    @id @db.VarChar(255)
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@schema("prod")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model profiles {
+  id                                                         String                     @id @db.Uuid
+  updated_at                                                 DateTime?                  @db.Timestamptz(6)
+  username                                                   String?
+  account_type                                               String?                    @default("client")
+  phone                                                      String?
+  channel_id                                                 String?                    @db.Uuid
+  integration_token                                          String?                    @unique(map: "profiles_matching_token_key")
+  skills                                                     String[]
+  avatar_url                                                 String?
+  email                                                      String                     @unique @db.VarChar
+  deel_contract_id                                           String?                    @db.VarChar(255)
+  assistant_role                                             String?
+  hubspot_contact_id                                         String?                    @unique @db.VarChar(255)
+  source                                                     String?                    @db.VarChar(255)
+  user_friendly_id                                           Int                        @default(autoincrement())
+  magic_classic_email                                        String?                    @db.VarChar(255)
+  nickname                                                   String?                    @db.VarChar(255)
+  profession                                                 String?                    @db.VarChar(255)
+  first_name                                                 String?                    @db.VarChar(50)
+  last_name                                                  String?                    @db.VarChar(50)
+  ai_rewrites                                                ai_rewrites[]              @ignore
+  assistant_reviews_assistant_reviews_assistant_idToprofiles assistant_reviews[]        @relation("assistant_reviews_assistant_idToprofiles")
+  assistant_reviews_assistant_reviews_reviewer_idToprofiles  assistant_reviews[]        @relation("assistant_reviews_reviewer_idToprofiles")
+  channels_channels_user_idToprofiles                        channels[]                 @relation("channels_user_idToprofiles")
+  client_organizations                                       client_organizations[]
+  daily_reports                                              daily_reports[]
+  deals                                                      deals[]
+  events                                                     events[]
+  integration_team_access                                    integration_team_access[]
+  integrations                                               integrations[]
+  messages                                                   messages[]
+  notes_notes_created_byToprofiles                           notes[]                    @relation("notes_created_byToprofiles")
+  notes_notes_updated_byToprofiles                           notes[]                    @relation("notes_updated_byToprofiles")
+  notifications                                              notifications[]
+  participants                                               participants[]
+  payouts                                                    payouts[]
+  pod_members                                                pod_members[]
+  channels_profiles_channel_idTochannels                     channels?                  @relation("profiles_channel_idTochannels", fields: [channel_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  pva_alert_actions                                          pva_alert_actions[]
+  pva_alerts                                                 pva_alerts[]
+  reviews                                                    reviews[]
+  sales_audio_recordings                                     sales_audio_recordings[]
+  schedules                                                  schedules[]
+  sessions                                                   prod_sessions[]
+  subtasks_subtasks_created_byToprofiles                     subtasks[]                 @relation("subtasks_created_byToprofiles")
+  subtasks_subtasks_updated_byToprofiles                     subtasks[]                 @relation("subtasks_updated_byToprofiles")
+  task_request_completions                                   task_request_completions[]
+  tasks_tasks_assigneeToprofiles                             tasks[]                    @relation("tasks_assigneeToprofiles")
+  tasks_tasks_created_byToprofiles                           tasks[]                    @relation("tasks_created_byToprofiles")
+  tasks_tasks_ownerToprofiles                                tasks[]                    @relation("tasks_ownerToprofiles")
+  tasks_tasks_updated_byToprofiles                           tasks[]                    @relation("tasks_updated_byToprofiles")
+  team_assistants                                            team_assistants[]
+
+  @@index([username], map: "profiles_username_index")
+  @@schema("prod")
+}
+
+model pva_alert_actions {
+  id               String      @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  pva_alert_id     String?     @db.Uuid
+  done_by          String?     @db.Uuid
+  action_type      String
+  notes            String?
+  duration_minutes Int?
+  created_at       DateTime?   @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime?   @db.Timestamptz(6)
+  profiles         profiles?   @relation(fields: [done_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "pva_alert_actions_done_by_foreign")
+  pva_alerts       pva_alerts? @relation(fields: [pva_alert_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "pva_alert_actions_pva_alert_id_foreign")
+
+  @@schema("prod")
+}
+
+model pva_alerts {
+  id                String              @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  assistant_id      String?             @db.Uuid
+  alert_type        String
+  alert_message     String
+  created_at        DateTime?           @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime?           @db.Timestamptz(6)
+  session_id        BigInt?
+  pva_alert_actions pva_alert_actions[]
+  profiles          profiles?           @relation(fields: [assistant_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "pva_alerts_assistant_id_foreign")
+  sessions          prod_sessions?      @relation(fields: [session_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "pva_alerts_session_id_foreign")
+
+  @@schema("prod")
+}
+
+model reviews {
+  id         String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  updated_at DateTime? @default(now()) @db.Timestamptz(6)
+  user_id    String    @db.Uuid
+  value      Decimal   @default(0) @db.Decimal
+  profiles   profiles  @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([user_id], map: "reviews_user_id_index")
+  @@schema("prod")
+}
+
+model sales_audio_recordings {
+  id               String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  user_id          String?   @db.Uuid
+  user_email       String?
+  user_name        String?
+  audio_signed_url String
+  title            String
+  notes            String?
+  transcript       String?
+  created_at       DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime? @db.Timestamptz(6)
+  profiles         profiles? @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "sales_audio_recordings_user_id_foreign")
+
+  @@schema("prod")
+}
+
+model schedule_preferences {
+  id                        String                      @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  active_work_days          String[]                    @default([])
+  dnd_from                  DateTime[]                  @default([]) @db.Timestamptz
+  dnd_to                    DateTime[]                  @default([]) @db.Timestamptz
+  active_work_hours_from    DateTime?                   @db.Time(6)
+  active_work_hours_to      DateTime?                   @db.Time(6)
+  communication_preferences communication_preferences[]
+
+  @@schema("prod")
+}
+
+model schedules {
+  id         BigInt    @id @default(autoincrement())
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  start_time DateTime? @db.Timestamptz(6)
+  end_time   DateTime? @db.Timestamptz(6)
+  weekday    BigInt?
+  user_id    String?   @db.Uuid
+  team_id    String?   @db.Uuid
+  teams      teams?    @relation(fields: [team_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "schedules_team_id_foreign")
+  profiles   profiles? @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([user_id], map: "schedules_user_id_index")
+  @@schema("prod")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model prod_sessions {
+  id                         BigInt                       @id @default(autoincrement())
+  created_at                 DateTime?                    @default(now()) @db.Timestamptz(6)
+  user_id                    String?                      @db.Uuid
+  ended_at                   DateTime?                    @db.Timestamptz(6)
+  total_time                 BigInt?
+  vcu_score                  Float?
+  quality_score              Float?
+  pl_notes                   String?
+  reviewer_id                String?                      @db.Uuid
+  team_id                    String?                      @db.Uuid
+  idle_duration              BigInt?
+  unproductive_duration      BigInt?
+  desktop_app_last_online    DateTime?                    @db.Timestamptz(6)
+  clockout_reason            String?                      @db.VarChar(255)
+  extension_version          String?                      @db.VarChar(255)
+  timezone                   String?                      @db.VarChar(255)
+  is_archived                Boolean?                     @default(false)
+  archived_at                DateTime?                    @default(now()) @db.Timestamptz(6)
+  archived_by                String                       @default("") @db.VarChar(255)
+  events                     events[]
+  pva_alerts                 pva_alerts[]
+  users                      users?                       @relation(fields: [reviewer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  teams                      teams?                       @relation(fields: [team_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "sessions_team_id_foreign")
+  profiles                   profiles?                    @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sessions_idle_events       sessions_idle_events[]
+  sessions_version_histories sessions_version_histories[]
+
+  @@index([user_id], map: "sessions_user_id_index")
+  @@map("sessions")
+  @@schema("prod")
+}
+
+model sessions_idle_events {
+  id         String        @id @db.Uuid
+  session_id BigInt
+  task_id    String?       @db.Uuid
+  idle_from  DateTime      @db.Timestamptz(6)
+  idle_to    DateTime      @db.Timestamptz(6)
+  created_at DateTime?     @default(now()) @db.Timestamptz(6)
+  updated_at DateTime?     @db.Timestamptz(6)
+  sessions   prod_sessions @relation(fields: [session_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "sessions_idle_events_session_id_foreign")
+  tasks      tasks?        @relation(fields: [task_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "sessions_idle_events_task_id_foreign")
+
+  @@index([session_id], map: "sessions_idle_events_session_id_index")
+  @@schema("prod")
+}
+
+model sessions_version_histories {
+  id                    String        @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  session_id            BigInt
+  idle_duration         BigInt
+  unproductive_duration BigInt
+  modified_by           String
+  created_at            DateTime?     @default(now()) @db.Timestamptz(6)
+  sessions              prod_sessions @relation(fields: [session_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "sessions_version_histories_session_id_foreign")
+
+  @@schema("prod")
+}
+
+model skills {
+  id    String  @id @default("")
+  label String? @default("")
+
+  @@schema("prod")
+}
+
+model subtasks {
+  id                                     String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  task_id                                String    @db.Uuid
+  position                               Int       @db.SmallInt
+  description                            String
+  completed                              Boolean   @default(false)
+  completed_at                           DateTime? @db.Timestamptz(6)
+  created_at                             DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at                             DateTime? @db.Timestamptz(6)
+  created_by                             String?   @db.Uuid
+  updated_by                             String?   @db.Uuid
+  is_archived                            Boolean?  @default(false)
+  profiles_subtasks_created_byToprofiles profiles? @relation("subtasks_created_byToprofiles", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "subtasks_created_by_foreign")
+  tasks                                  tasks     @relation(fields: [task_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  profiles_subtasks_updated_byToprofiles profiles? @relation("subtasks_updated_byToprofiles", fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "subtasks_updated_by_foreign")
+
+  @@index([task_id], map: "subtasks_task_id_index")
+  @@schema("prod")
+}
+
+model task_reports {
+  id          String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  created_by  String?   @db.Uuid
+  team_id     String?   @db.Uuid
+  title       String?
+  prompt      String?
+  result      String?
+  start_date  DateTime? @db.Timestamptz(6)
+  end_date    DateTime? @db.Timestamptz(6)
+  updated_by  String?   @db.Uuid
+  is_archived Boolean?  @default(false)
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @db.Timestamptz(6)
+  teams       teams?    @relation(fields: [team_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "task_reports_team_id_foreign")
+
+  @@schema("prod")
+}
+
+model task_request {
+  id                                 String                               @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  title                              String
+  description                        String
+  eta                                Int
+  created_at                         DateTime?                            @default(now()) @db.Timestamptz(6)
+  updated_at                         DateTime?                            @db.Timestamptz(6)
+  profile_id                         String?                              @db.Uuid
+  is_confirmed                       Boolean?                             @default(false)
+  task_request_adjustments           task_request_adjustments[]
+  task_request_bills                 task_request_bills[]
+  task_request_completions           task_request_completions[]
+  task_request_payouts               task_request_payouts[]
+  task_request_stripe_payment_intent task_request_stripe_payment_intent[]
+
+  @@index([profile_id], map: "task_request_profile_id_index")
+  @@schema("prod")
+}
+
+model task_request_adjustments {
+  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  task_request_id String       @db.Uuid
+  adjustment_id   String       @db.Uuid
+  created_at      DateTime?    @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime?    @db.Timestamptz(6)
+  adjustments     adjustments  @relation(fields: [adjustment_id], references: [id], onDelete: Cascade, map: "task_request_adjustments_adjustment_id_foreign")
+  task_request    task_request @relation(fields: [task_request_id], references: [id], onDelete: Cascade, map: "task_request_adjustments_task_request_id_foreign")
+
+  @@index([adjustment_id], map: "task_request_adjustments_adjustment_id_index")
+  @@index([task_request_id], map: "task_request_adjustments_task_request_id_index")
+  @@schema("prod")
+}
+
+model task_request_bills {
+  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  task_request_id String       @db.Uuid
+  bill_id         String       @db.Uuid
+  created_at      DateTime?    @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime?    @db.Timestamptz(6)
+  bills           bills        @relation(fields: [bill_id], references: [id], onDelete: Cascade, map: "task_request_bills_bill_id_foreign")
+  task_request    task_request @relation(fields: [task_request_id], references: [id], onDelete: Cascade, map: "task_request_bills_task_request_id_foreign")
+
+  @@unique([task_request_id, bill_id], map: "task_request_bills_task_request_id_bill_id_unique")
+  @@index([bill_id], map: "task_request_bills_bill_id_index")
+  @@index([task_request_id], map: "task_request_bills_task_request_id_index")
+  @@schema("prod")
+}
+
+model task_request_completions {
+  id               String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  task_request_id  String       @db.Uuid
+  assistant_id     String       @db.Uuid
+  cycle_start_date DateTime     @db.Timestamptz(6)
+  cycle_end_date   DateTime     @db.Timestamptz(6)
+  created_at       DateTime?    @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime?    @db.Timestamptz(6)
+  profiles         profiles     @relation(fields: [assistant_id], references: [id], onDelete: Cascade, map: "task_request_completions_assistant_id_foreign")
+  task_request     task_request @relation(fields: [task_request_id], references: [id], onDelete: Cascade, map: "task_request_completions_task_request_id_foreign")
+
+  @@index([assistant_id], map: "task_request_completions_assistant_id_index")
+  @@index([task_request_id], map: "task_request_completions_task_request_id_index")
+  @@schema("prod")
+}
+
+model task_request_payouts {
+  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  task_request_id String       @db.Uuid
+  payout_id       String       @db.Uuid
+  created_at      DateTime?    @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime?    @db.Timestamptz(6)
+  payouts         payouts      @relation(fields: [payout_id], references: [id], onDelete: Cascade, map: "task_request_payouts_payout_id_foreign")
+  task_request    task_request @relation(fields: [task_request_id], references: [id], onDelete: Cascade, map: "task_request_payouts_task_request_id_foreign")
+
+  @@index([payout_id], map: "task_request_payouts_payout_id_index")
+  @@index([task_request_id], map: "task_request_payouts_task_request_id_index")
+  @@schema("prod")
+}
+
+model task_request_stripe_payment_intent {
+  id              String        @id
+  amount          Int
+  status          String
+  organization_id String        @db.Uuid
+  task_request_id String        @db.Uuid
+  created_at      DateTime?     @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime?     @db.Timestamptz(6)
+  organizations   organizations @relation(fields: [organization_id], references: [id], onDelete: Cascade, map: "task_request_stripe_payment_intent_organization_id_foreign")
+  task_request    task_request  @relation(fields: [task_request_id], references: [id], onDelete: Cascade, map: "task_request_stripe_payment_intent_task_request_id_foreign")
+
+  @@unique([organization_id, task_request_id], map: "task_request_stripe_payment_intent_organization_id_task_request")
+  @@index([organization_id], map: "task_request_stripe_payment_intent_organization_id_index")
+  @@index([task_request_id], map: "task_request_stripe_payment_intent_task_request_id_index")
+  @@schema("prod")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model tasks {
+  created_at                          DateTime?              @default(now()) @db.Timestamptz(6)
+  team_id                             String?                @db.Uuid
+  amount                              Decimal?               @default(0) @db.Decimal
+  description                         String?
+  id                                  String                 @id @unique @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  status                              Decimal?               @default(0) @db.Decimal
+  owner                               String?                @db.Uuid
+  completed_at                        DateTime?              @db.Timestamptz(6)
+  started_at                          DateTime?              @db.Timestamptz(6)
+  updated_at                          DateTime?              @db.Timestamptz(6)
+  title                               String?
+  cancellation_reason                 String?
+  priority                            Int?
+  due_date                            DateTime?              @db.Timestamptz(6)
+  assignee                            String?                @db.Uuid
+  is_archived                         Boolean?               @default(false)
+  received_at                         DateTime?              @db.Timestamptz(6)
+  overview                            String?
+  notable_updates                     String?
+  next_actions                        String?
+  created_by                          String?                @db.Uuid
+  updated_by                          String?                @db.Uuid
+  events                              events[]
+  sessions_idle_events                sessions_idle_events[]
+  subtasks                            subtasks[]
+  profiles_tasks_assigneeToprofiles   profiles?              @relation("tasks_assigneeToprofiles", fields: [assignee], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "tasks_assignee_foreign")
+  profiles_tasks_created_byToprofiles profiles?              @relation("tasks_created_byToprofiles", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "tasks_created_by_foreign")
+  profiles_tasks_ownerToprofiles      profiles?              @relation("tasks_ownerToprofiles", fields: [owner], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  teams                               teams?                 @relation(fields: [team_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "tasks_team_id_foreign")
+  profiles_tasks_updated_byToprofiles profiles?              @relation("tasks_updated_byToprofiles", fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "tasks_updated_by_foreign")
+
+  @@index([owner], map: "tasks_owner_index")
+  @@index([team_id], map: "tasks_team_id_index")
+  @@schema("prod")
+}
+
+model team_assistants {
+  id        BigInt    @default(autoincrement())
+  joined_at DateTime? @default(now()) @db.Timestamptz(6)
+  team      String    @db.Uuid
+  assistant String    @db.Uuid
+  is_online Boolean?  @default(false)
+  profiles  profiles  @relation(fields: [assistant], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "deal_assistants_assistant_fkey")
+  teams     teams     @relation(fields: [team], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "deal_assistants_team_foreign")
+
+  @@id([id, team, assistant], map: "deal_assistants_pkey")
+  @@index([assistant], map: "team_assistants_assistant_index")
+  @@index([team], map: "team_assistants_team_index")
+  @@schema("prod")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model teams {
+  id                                          String                    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  created_at                                  DateTime?                 @default(now()) @db.Timestamptz(6)
+  active                                      Boolean?
+  name                                        String?
+  email                                       String?                   @unique(map: "deals_email_address_key") @db.VarChar
+  organization_id                             String?                   @db.Uuid
+  balance                                     Decimal?                  @db.Decimal(8, 2)
+  preference_pad                              String?
+  screen_monitoring_status                    Boolean?                  @default(true)
+  screen_monitoring_status_updated_at         DateTime?                 @db.Timestamptz(6)
+  screen_monitoring_status_updated_by         String?                   @db.VarChar(255)
+  screen_monitoring_status_updated_by_user_id String?                   @db.Uuid
+  ai_rewrites                                 ai_rewrites[]             @ignore
+  daily_reports                               daily_reports[]
+  email_participants                          email_participants[]
+  integration_team_access                     integration_team_access[]
+  messages                                    messages[]
+  notes                                       notes[]
+  participants                                participants[]
+  schedules                                   schedules[]
+  sessions                                    prod_sessions[]
+  task_reports                                task_reports[]
+  tasks                                       tasks[]
+  team_assistants                             team_assistants[]
+  organizations                               organizations?            @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "deals_owner_fkey")
+
+  @@index([organization_id], map: "teams_organization_id_index")
+  @@schema("prod")
+}
+
+model transactions {
+  id                       String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  bill_id                  String?   @db.Uuid
+  payout_id                String?   @db.Uuid
+  stripe_payment_intent_id String?   @db.VarChar(50)
+  type                     String?   @db.VarChar(255)
+  date                     DateTime? @db.Timestamptz(6)
+  total                    Int?
+  reference_id             String?   @db.VarChar(50)
+  reference_type           String?   @db.VarChar(50)
+  generated_by             String?
+  notes                    String?
+  bills                    bills?    @relation(fields: [bill_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "transactions_bill_id_foreign")
+  payouts                  payouts?  @relation(fields: [payout_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "transactions_payout_id_foreign")
+
+  @@schema("prod")
+}
+
+enum aal_level {
+  aal1
+  aal2
+  aal3
+
+  @@schema("auth")
+}
+
+enum code_challenge_method {
+  s256
+  plain
+
+  @@schema("auth")
+}
+
+enum factor_status {
+  unverified
+  verified
+
+  @@schema("auth")
+}
+
+enum factor_type {
+  totp
+  webauthn
+
+  @@schema("auth")
+}

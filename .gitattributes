@@ -1,0 +1,4 @@
+# https://bun.sh/docs/install/lockfile
+# Only works in VSCode when file is already in staging
+# https://github.com/microsoft/vscode/issues/168472
+*.lockb binary diff=lockb

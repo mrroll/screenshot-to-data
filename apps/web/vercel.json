@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "src/app/api/chat/**/*": {
+      "memory": 384,
+      "maxDuration": 300
+    },
+    "src/pages/api/graphql": {
+      "memory": 384,
+      "maxDuration": 15
+    }
+  }
+}

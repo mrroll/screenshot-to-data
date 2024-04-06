@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": [
+    "@pluslabs/style-guide/tsconfig/node18"
+  ],
+  "compilerOptions": {
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ]
+    },
+    "baseUrl": "."
+  },
+  "include": [
+    "/**/*.ts",
+    "/**/.*.ts"
+  ],
+  "exclude": [
+    "node_moudles"
+  ]
+}
