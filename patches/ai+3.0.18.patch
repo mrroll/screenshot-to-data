@@ -1,0 +1,22 @@
+diff --git a/node_modules/ai/dist/index.mjs b/node_modules/ai/dist/index.mjs
+index 75f08c5..0356097 100644
+--- a/node_modules/ai/dist/index.mjs
++++ b/node_modules/ai/dist/index.mjs
+@@ -1984,7 +1984,16 @@ function createEventStreamTransformer(customParser) {
+       );
+     },
+     transform(chunk) {
+-      eventSourceParser.feed(textDecoder.decode(chunk));
++      // patch-package start
++      // Support Ollama + Llava stream
++      // eventSourceParser.feed(textDecoder.decode(chunk));
++      const event = textDecoder.decode(chunk);
++      if (event.startsWith("data: ")) {
++        eventSourceParser.feed(event);
++      } else {
++        eventSourceParser.feed(`data: ${event}\n`);
++      }
++      // patch-package end
+     }
+   });
+ }

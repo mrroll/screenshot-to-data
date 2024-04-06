@@ -1,0 +1,102 @@
+generator client {
+    provider        = "prisma-client-js"
+    previewFeatures = ["relationJoins"]
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+/// An uploaded screenshot
+model screenshot {
+    Id    Int    @id @default(autoincrement())
+    UUID  String @unique @default(dbgenerated("gen_random_uuid()")) @db.Char(36)
+    // screenshot_xxxxxxxxxxxxxxxxxxxxxxxx
+    CUID2 String @unique @default("") @db.Char(35)
+
+    // https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-keys.html
+    S3Filename       String  @unique @db.VarChar(1024)
+    OriginalFilename String
+    Prompt           String  @default("What is in this picture?")
+    Description      String
+    /// A presigned S3 URL
+    S3URL            String? @unique @db.VarChar(2000)
+    Width            Int
+    Height           Int
+
+    CreatedAt DateTime @default(now()) @db.Timestamptz(3)
+    UpdatedAt DateTime @default(now()) @db.Timestamptz(3)
+
+    UserID String @db.Uuid
+    user   user   @relation(fields: [UserID], references: [id], onUpdate: Cascade, onDelete: Cascade)
+
+    @@index([CreatedAt])
+    @@index([UpdatedAt])
+}
+
+// Obtained via npx prisma db pull while pointing to the auth schema.
+// 1. Renamed to user to conform to project naming.
+// 2. Removed the default value of confirmed_at since it was causing an error
+//    "cannot use column reference in DEFAULT expression". Instead, we created a
+//    trigger and function to handle it.
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model user {
+    instance_id                 String?          @db.Uuid
+    id                          String           @id @db.Uuid
+    aud                         String?          @db.VarChar(255)
+    role                        String?          @db.VarChar(255)
+    email                       String?          @db.VarChar(255)
+    encrypted_password          String?          @db.VarChar(255)
+    email_confirmed_at          DateTime?        @db.Timestamptz(6)
+    invited_at                  DateTime?        @db.Timestamptz(6)
+    confirmation_token          String?          @db.VarChar(255)
+    confirmation_sent_at        DateTime?        @db.Timestamptz(6)
+    recovery_token              String?          @db.VarChar(255)
+    recovery_sent_at            DateTime?        @db.Timestamptz(6)
+    email_change_token_new      String?          @db.VarChar(255)
+    email_change                String?          @db.VarChar(255)
+    email_change_sent_at        DateTime?        @db.Timestamptz(6)
+    last_sign_in_at             DateTime?        @db.Timestamptz(6)
+    raw_app_meta_data           Json?
+    raw_user_meta_data          Json?
+    is_super_admin              Boolean?
+    created_at                  DateTime?        @db.Timestamptz(6)
+    updated_at                  DateTime?        @db.Timestamptz(6)
+    phone                       String?          @unique
+    phone_confirmed_at          DateTime?        @db.Timestamptz(6)
+    phone_change                String?          @default("")
+    phone_change_token          String?          @default("") @db.VarChar(255)
+    phone_change_sent_at        DateTime?        @db.Timestamptz(6)
+    confirmed_at                DateTime?        @db.Timestamptz(6)
+    email_change_token_current  String?          @default("") @db.VarChar(255)
+    email_change_confirm_status Int?             @default(0) @db.SmallInt
+    banned_until                DateTime?        @db.Timestamptz(6)
+    reauthentication_token      String?          @default("") @db.VarChar(255)
+    reauthentication_sent_at    DateTime?        @db.Timestamptz(6)
+    is_sso_user                 Boolean          @default(false)
+    deleted_at                  DateTime?        @db.Timestamptz(6)
+    is_anonymous                Boolean          @default(false)
+    user_preference             user_preference?
+    screenshot                  screenshot[]
+
+    @@index([instance_id])
+    @@index([is_anonymous])
+}
+
+model user_preference {
+    Id     Int     @id @default(autoincrement())
+    UUID   String  @unique @default(dbgenerated("gen_random_uuid()")) @db.Char(36)
+    // user_preference_xxxxxxxxxxxxxxxxxxxxxxxx
+    CUID2  String  @unique @default("") @db.Char(40)
+    Prompt String?
+
+    CreatedAt DateTime @default(now()) @db.Timestamptz(3)
+    UpdatedAt DateTime @default(now()) @db.Timestamptz(3)
+
+    user   user   @relation(fields: [UserID], references: [id], onUpdate: Cascade, onDelete: Cascade)
+    UserID String @unique @db.Uuid
+}
