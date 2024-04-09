@@ -11,12 +11,12 @@ import {
 import { useChat } from 'ai/react';
 import Bluebird from 'bluebird';
 import { LoaderCircleIcon } from 'lucide-react';
-import { Duration } from 'luxon';
+// import { Duration } from 'luxon';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
-import { getLock } from '@/lib/verrou';
+// import { getLock } from '@/lib/verrou';
 
 import { AppPageScreenshot as Screenshot } from '@/app/(app)/(authenticated)/_page-screenshot';
 import { AppPageScreenshotScreenshotsQuery as ScreenshotsQuery } from '@/app/(app)/(authenticated)/_page-screenshot/screenshots-query';
@@ -42,8 +42,8 @@ import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { useInfiniteGraphQLQuery } from '@/hooks/use-infinite-graphql-query';
 import { PromiseWithResolvers } from '@/utilities/promise-with-resolvers';
 
-const BUSY_MESSAGE =
-  '🔴 All our servers are busy at the moment. Please try again later.';
+// const BUSY_MESSAGE =
+//   '🔴 All our servers are busy at the moment. Please try again later.';
 
 const HealthQuery = graphql(`
   query HealthQuery {
@@ -65,22 +65,22 @@ const GenerateS3SignedURLsMutation = graphql(`
   }
 `);
 
-const LockMutation = graphql(`
-  mutation LockMutation($options: LockMutationInput) {
-    Lock(options: $options) {
-      key
-      owner
-      ttl
-      expirationTime
-    }
-  }
-`);
+// const LockMutation = graphql(`
+//   mutation LockMutation($options: LockMutationInput) {
+//     Lock(options: $options) {
+//       key
+//       owner
+//       ttl
+//       expirationTime
+//     }
+//   }
+// `);
 
-const DeleteLockMutation = graphql(`
-  mutation DeleteLockMutation($options: LockMutationInput) {
-    DeleteLock(options: $options)
-  }
-`);
+// const DeleteLockMutation = graphql(`
+//   mutation DeleteLockMutation($options: LockMutationInput) {
+//     DeleteLock(options: $options)
+//   }
+// `);
 
 const formSchema = z.object({
   files: z.array(
@@ -106,6 +106,8 @@ const AppPage = () => {
     },
   });
 
+  console.log(isFetching);
+
   const healthQuery = useGraphQLQuery({
     queryKey: [HealthQuery],
   });
@@ -114,13 +116,13 @@ const AppPage = () => {
     document: GenerateS3SignedURLsMutation,
   });
 
-  const lockMutation = useGraphQLMutation({
-    document: LockMutation,
-  });
+  // const lockMutation = useGraphQLMutation({
+  //   document: LockMutation,
+  // });
 
-  const deleteLockMutation = useGraphQLMutation({
-    document: DeleteLockMutation,
-  });
+  // const deleteLockMutation = useGraphQLMutation({
+  //   document: DeleteLockMutation,
+  // });
 
   const uploadImageToS3Mutation = useMutation<
     void,
@@ -177,23 +179,23 @@ const AppPage = () => {
   const handleSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsRunning(true);
 
-    const { Lock } = await lockMutation.mutateAsync({
-      options: {
-        key: getLock('/api/chat/route'),
-        // 2 and a half minutes is plenty of time for our model to load in case
-        // it hasn't already and to actually respond
-        ttl: Duration.fromObject({ minutes: 2.5 }).as('milliseconds'),
-      },
-    });
+    // const { Lock } = await lockMutation.mutateAsync({
+    //   options: {
+    //     key: getLock('/api/chat/route'),
+    //     // 2 and a half minutes is plenty of time for our model to load in case
+    //     // it hasn't already and to actually respond
+    //     ttl: Duration.fromObject({ minutes: 2.5 }).as('milliseconds'),
+    //   },
+    // });
 
     try {
-      if (Lock.key === null) {
-        await healthQuery.refetch();
+      // if (Lock.key === null) {
+      //   await healthQuery.refetch();
 
-        setIsRunning(false);
+      //   setIsRunning(false);
 
-        return toast.error(BUSY_MESSAGE);
-      }
+      //   return toast.error(BUSY_MESSAGE);
+      // }
 
       const GenerateS3SignedURLsPromise =
         generateS3SignedURLsMutation.mutateAsync({
@@ -278,7 +280,7 @@ const AppPage = () => {
               role: 'system',
               content: uploadedDetailed.value.file.name,
             },
-            { id: 'lock', role: 'system', content: JSON.stringify(Lock) },
+            // { id: 'lock', role: 'system', content: JSON.stringify(Lock) },
           ]);
 
           await chat.reload();
@@ -333,15 +335,15 @@ const AppPage = () => {
     } catch (error) {
       chat.setMessages([]);
 
-      await deleteLockMutation.mutateAsync({
-        options: Lock,
-      });
+      // await deleteLockMutation.mutateAsync({
+      //   options: Lock,
+      // });
 
-      queryClient.setQueryData<ResultOf<typeof HealthQuery>>([HealthQuery], {
-        Health: { Ollama: 'OK' },
-      });
+      // queryClient.setQueryData<ResultOf<typeof HealthQuery>>([HealthQuery], {
+      //   Health: { Ollama: 'OK' },
+      // });
 
-      await healthQuery.refetch();
+      // await healthQuery.refetch();
 
       throw error;
     } finally {
@@ -476,13 +478,6 @@ const AppPage = () => {
               >
                 Upload
               </Button>
-              {isRunning !== true &&
-              typeof healthQuery.data !== 'undefined' &&
-              healthQuery.data.Health.Ollama !== 'OK' ? (
-                // TODO
-                // Make this look nicer
-                <p>{BUSY_MESSAGE}</p>
-              ) : null}
             </form>
           </Form>
         </CardContent>
@@ -508,7 +503,7 @@ const AppPage = () => {
                * filename and original filename to the AI which makes up the
                * first two messages.
                */}
-              {transcript.length > 3 && (
+              {transcript.length > 2 && (
                 <div className="font-normal">
                   {message.content.split('\n').map((line, index) => (
                     // eslint-disable-next-line react/no-array-index-key -- There's no way to ensure uniqueness
@@ -538,7 +533,7 @@ const AppPage = () => {
 
           return fetchNextPage();
         }}
-        disabled={isFetching || healthQuery.data?.Health.Ollama !== 'OK'}
+        disabled={isFetching}
       >
         Load More Screenshots
       </Button>

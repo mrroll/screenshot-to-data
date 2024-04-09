@@ -22,7 +22,8 @@ import { z } from 'zod';
 
 import { prisma } from '@/lib/server/prisma';
 import { s3 } from '@/lib/server/s3';
-import { verrou } from '@/lib/server/verrou';
+
+// import { verrou } from '@/lib/server/verrou';
 
 import { config } from '@/config/server';
 import { getUserFromCookie } from '@/utilities/server/get-user-from-cookie';
@@ -82,7 +83,7 @@ export async function POST(req: Request) {
           id: z.union([
             z.literal('uploadedFileName'),
             z.literal('originalFilename'),
-            z.literal('lock'),
+            // z.literal('lock'),
           ]),
           role: z.literal('system'),
           content: z.string(),
@@ -94,26 +95,26 @@ export async function POST(req: Request) {
 
   const { messages } = body;
 
-  const lockMessage = messages.find((message) => message.id === 'lock');
+  // const lockMessage = messages.find((message) => message.id === 'lock');
 
-  if (typeof lockMessage === 'undefined') {
-    return new NextResponse('Bad Request', { status: 400 });
-  }
+  // if (typeof lockMessage === 'undefined') {
+  //   return new NextResponse('Bad Request', { status: 400 });
+  // }
 
-  const lock = verrou.restoreLock(
-    z
-      .object({
-        key: z.string(),
-        owner: z.string(),
-        ttl: z.number().nullable(),
-        expirationTime: z.number().nullable(),
-      })
-      .parse(JSON.parse(lockMessage.content)),
-  );
+  // const lock = verrou.restoreLock(
+  //   z
+  //     .object({
+  //       key: z.string(),
+  //       owner: z.string(),
+  //       ttl: z.number().nullable(),
+  //       expirationTime: z.number().nullable(),
+  //     })
+  //     .parse(JSON.parse(lockMessage.content)),
+  // );
 
-  if ((await lock.isLocked()) !== true) {
-    return new NextResponse('Bad Request', { status: 400 });
-  }
+  // if ((await lock.isLocked()) !== true) {
+  //   return new NextResponse('Bad Request', { status: 400 });
+  // }
 
   const uploadedFileNameMessage = messages.find(
     (message) => message.id === 'uploadedFileName',
@@ -184,6 +185,10 @@ export async function POST(req: Request) {
       stream: true,
       prompt,
       images: [base64],
+      // https://github.com/ollama/ollama/issues/1863#issuecomment-2042900528
+      options: {
+        num_keep: 0,
+      },
     }),
   });
 
@@ -297,7 +302,7 @@ export async function POST(req: Request) {
 
       data.append(JSON.stringify(omit(screenshot, ['Id'])));
 
-      await lock.release();
+      // await lock.release();
 
       return data.close();
     },
