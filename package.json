@@ -4,7 +4,6 @@
   "private": true,
   "main": "src/index.ts",
   "workspaces": [
-    "apps/api",
     "apps/cli",
     "apps/web",
     "packages/common"
