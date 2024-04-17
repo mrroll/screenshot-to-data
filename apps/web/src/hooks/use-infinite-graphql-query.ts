@@ -6,6 +6,7 @@ import {
 } from '@tanstack/react-query';
 import { deepmerge } from 'deepmerge-ts';
 import { type RequestDocument } from 'graphql-request';
+import { isEmpty } from 'remeda';
 import { z } from 'zod';
 
 import { client } from '@/lib/client/graphql-request';
@@ -43,13 +44,13 @@ export const useInfiniteGraphQLQuery = <
 
       const mergedVariables = deepmerge(
         typeof variables === 'object' ? variables : {},
-        forward.success ? { options: forward.data } : {},
-        backward.success ? { options: backward.data } : {},
+        forward.success ? forward.data : {},
+        backward.success ? backward.data : {},
       );
 
       return client.request<TQueryFnData>({
         document,
-        variables: mergedVariables,
+        variables: isEmpty(mergedVariables) ? undefined : mergedVariables,
         signal,
       } as Parameters<typeof client.request>[0]);
     },

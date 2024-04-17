@@ -16,7 +16,7 @@ import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
-import { getLock } from '@/lib/verrou';
+import { getKey } from '@/lib/redis';
 
 import { AppPageScreenshot as Screenshot } from '@/app/(app)/(authenticated)/_page-screenshot';
 import { AppPageScreenshotScreenshotsQuery as ScreenshotsQuery } from '@/app/(app)/(authenticated)/_page-screenshot/screenshots-query';
@@ -41,18 +41,35 @@ import { graphql, type ResultOf } from '@/graphql/graphql';
 import { useGraphQLMutation } from '@/hooks/use-graphql-mutation';
 import { useGraphQLQuery } from '@/hooks/use-graphql-query';
 import { useInfiniteGraphQLQuery } from '@/hooks/use-infinite-graphql-query';
+import { cn } from '@/utilities/client/cn';
 import { PromiseWithResolvers } from '@/utilities/promise-with-resolvers';
 
 const Loader = ({ current, total }: { current: number; total: number }) => {
   const progress = (current / total) * 100;
+
   return (
-    <React.Fragment>
+    <div className="flex w-full flex-col gap-y-2">
       <p>
-        Uploading {current + 1}/{total} files
+        {current !== total ? (
+          <React.Fragment>
+            Currently processing file{' '}
+            <span className="font-mono">
+              {current + 1}/{total}
+            </span>
+          </React.Fragment>
+        ) : (
+          <React.Fragment>Processing Files Complete</React.Fragment>
+        )}
       </p>
-      <p>{(current / total) * 100}%</p>
-      <Progress value={progress} />
-    </React.Fragment>
+
+      <div className="flex w-full gap-x-1">
+        <Progress
+          className={cn(current !== total && 'animate-pulse')}
+          value={progress}
+        />
+        <p className="font-mono">{progress.toFixed(2)}%</p>
+      </div>
+    </div>
   );
 };
 
@@ -67,11 +84,17 @@ const HealthQuery = graphql(`
   }
 `);
 
-const GenerateS3SignedURLsMutation = graphql(`
-  mutation GenerateS3SignedURLsMutation(
-    $options: [GenerateS3SignedURLMutationInput!]!
-  ) {
-    GenerateS3SignedURLs(options: $options) {
+const HealthMutation = graphql(`
+  mutation HealthMutation($Ollama: Boolean) {
+    Health(Ollama: $Ollama) {
+      Ollama
+    }
+  }
+`);
+
+const S3SignedURLsMutation = graphql(`
+  mutation S3SignedURLsMutation($S3SignedURLs: [S3SignedURLsInput!]!) {
+    S3SignedURLs(S3SignedURLs: $S3SignedURLs) {
       URL
       name
       exists
@@ -80,8 +103,8 @@ const GenerateS3SignedURLsMutation = graphql(`
 `);
 
 const LockMutation = graphql(`
-  mutation LockMutation($options: LockMutationInput) {
-    Lock(options: $options) {
+  mutation LockMutation($key: String, $ttl: SafeInt) {
+    Lock(key: $key, ttl: $ttl) {
       key
       owner
       ttl
@@ -90,9 +113,19 @@ const LockMutation = graphql(`
   }
 `);
 
-const DeleteLockMutation = graphql(`
-  mutation DeleteLockMutation($options: LockMutationInput) {
-    DeleteLock(options: $options)
+const LockRemoveMutation = graphql(`
+  mutation LockRemoveMutation(
+    $key: String
+    $owner: String
+    $ttl: SafeInt
+    $expirationTime: SafeInt
+  ) {
+    LockRemove(
+      key: $key
+      owner: $owner
+      ttl: $ttl
+      expirationTime: $expirationTime
+    )
   }
 `);
 
@@ -110,7 +143,7 @@ const formSchema = z.object({
 
 const AppPage = () => {
   const { data, fetchNextPage, isFetching } = useInfiniteGraphQLQuery({
-    queryKey: [ScreenshotsQuery],
+    queryKey: [ScreenshotsQuery, { limit: 10 }],
     initialPageParam: undefined,
     getNextPageParam: (data) => {
       return {
@@ -124,16 +157,20 @@ const AppPage = () => {
     queryKey: [HealthQuery],
   });
 
-  const generateS3SignedURLsMutation = useGraphQLMutation({
-    document: GenerateS3SignedURLsMutation,
+  const healthMutation = useGraphQLMutation({
+    document: HealthMutation,
+  });
+
+  const s3SignedURLsMutation = useGraphQLMutation({
+    document: S3SignedURLsMutation,
   });
 
   const lockMutation = useGraphQLMutation({
     document: LockMutation,
   });
 
-  const deleteLockMutation = useGraphQLMutation({
-    document: DeleteLockMutation,
+  const lockRemoveMutation = useGraphQLMutation({
+    document: LockRemoveMutation,
   });
 
   const uploadImageToS3Mutation = useMutation<
@@ -206,28 +243,27 @@ const AppPage = () => {
     try {
       let statusToastID = null as string | number | null;
 
-      const GenerateS3SignedURLsPromise =
-        generateS3SignedURLsMutation.mutateAsync({
-          options: values.files.map(({ fileName }) => {
-            if (typeof fileName !== 'string') {
-              throw new Error('fileName is not a string');
-            }
+      const s3SignedURLsMutationPromise = s3SignedURLsMutation.mutateAsync({
+        S3SignedURLs: values.files.map(({ fileName }) => {
+          if (typeof fileName !== 'string') {
+            throw new Error('fileName is not a string');
+          }
 
-            return {
-              name: fileName,
-            };
-          }),
-        });
+          return {
+            name: fileName,
+          };
+        }),
+      });
 
-      statusToastID = toast.promise(GenerateS3SignedURLsPromise, {
+      statusToastID = toast.promise(s3SignedURLsMutationPromise, {
         loading: 'Creating Upload URLs for Images',
         success: 'Successfully created Upload URLs for Images',
       });
 
-      const { GenerateS3SignedURLs } = await GenerateS3SignedURLsPromise;
+      const { S3SignedURLs } = await s3SignedURLsMutationPromise;
 
-      const uploadFilesPromise = Promise.allSettled(
-        GenerateS3SignedURLs.map(async ({ name, URL, exists }) => {
+      const uploadFilesToS3Promise = Promise.allSettled(
+        S3SignedURLs.map(async ({ name, URL, exists }) => {
           const file = values.files.find((file) => file.fileName === name);
 
           if (typeof file === 'undefined') {
@@ -250,15 +286,15 @@ const AppPage = () => {
         }),
       );
 
-      toast.promise(uploadFilesPromise, {
+      toast.promise(uploadFilesToS3Promise, {
         loading: 'Uploading Images',
         success: 'Successfully uploaded Images',
         id: statusToastID,
       });
 
-      const uploaded = await uploadFilesPromise;
+      const uploadedFilesToS3 = await uploadFilesToS3Promise;
 
-      const progress = { current: 0, total: uploaded.length };
+      const progress = { current: 0, total: uploadedFilesToS3.length };
 
       toast(<Loader current={progress.current} total={progress.total} />, {
         id: statusToastID,
@@ -266,19 +302,17 @@ const AppPage = () => {
       });
 
       const processAllImagesPromise = Bluebird.map(
-        uploaded,
-        async (uploadedDetailed, index) => {
-          if (uploadedDetailed.status !== 'fulfilled') {
+        uploadedFilesToS3,
+        async (uploadedFileToS3, index) => {
+          if (uploadedFileToS3.status !== 'fulfilled') {
             throw new Error('promise.status is not fulfilled');
           }
 
           const { Lock } = await lockMutation.mutateAsync({
-            options: {
-              key: getLock('/api/chat/route'),
-              // 2 and a half minutes is plenty of time for our model to load in case
-              // it hasn't already and for it to actually respond, too.
-              ttl: Duration.fromObject({ minutes: 2.5 }).as('milliseconds'),
-            },
+            key: getKey('verrou:/api/chat/route'),
+            // 2 and a half minutes is plenty of time for our model to load in case
+            // it hasn't already and for it to actually respond, too.
+            ttl: Duration.fromObject({ minutes: 2.5 }).as('milliseconds'),
           });
 
           if (Lock.key === null) {
@@ -290,7 +324,7 @@ const AppPage = () => {
           lastLock.ttl = Lock.ttl;
           lastLock.expirationTime = Lock.expirationTime;
 
-          setCurrentlyUploadingFileName(uploadedDetailed.value.fileName);
+          setCurrentlyUploadingFileName(uploadedFileToS3.value.fileName);
 
           // Let's use the id field to tell the backend what each item.content
           // contains. If you update this, ensure that you update the length
@@ -300,12 +334,12 @@ const AppPage = () => {
             {
               id: 'uploadedFileName',
               role: 'system',
-              content: uploadedDetailed.value.fileName,
+              content: uploadedFileToS3.value.fileName,
             },
             {
               id: 'originalFilename',
               role: 'system',
-              content: uploadedDetailed.value.file.name,
+              content: uploadedFileToS3.value.file.name,
             },
             { id: 'lock', role: 'system', content: JSON.stringify(Lock) },
           ]);
@@ -329,15 +363,33 @@ const AppPage = () => {
         {
           concurrency: 1,
         },
-      ).catch((error) => {
+      ).catch(async (error) => {
         if (error instanceof Error) {
-          if (error.message === 'Service Unavailable') {
-            toast.error(
-              'A response was not received in a timely manner from the AI assistant.',
-              { id: statusToastID },
-            );
+          if (
+            // This is a known error that is returned by our app route
+            error.message === 'Service Unavailable' ||
+            // https://github.com/vercel/ai/blob/9885b81443a4b1236a046dc0ac83128c3863e255/packages/core/shared/call-completion-api.ts#L70
+            error.message === 'Failed to fetch the chat response.'
+          ) {
+            const resetPromise = healthMutation.mutateAsync({ Ollama: true });
+
+            toast.promise(resetPromise, {
+              loading:
+                'A response was not received in a timely manner from the AI assistant. An attempt will be made to restart the server. Please do not leave this page.',
+              success:
+                'Successfully restarted the AI assistant. You may try to process your images again.',
+              id: statusToastID,
+              // https://sonner.emilkowal.ski/toast#api-reference
+              duration: 4000,
+            });
+
+            await resetPromise;
           } else {
-            toast.error(error.message, { id: statusToastID });
+            toast.error(error.message, {
+              id: statusToastID,
+              // https://sonner.emilkowal.ski/toast#api-reference
+              duration: 4000,
+            });
           }
         }
 
@@ -346,13 +398,11 @@ const AppPage = () => {
 
       await processAllImagesPromise;
 
-      if (uploaded.length > 1) {
-        toast.success('Successfully processed all images', {
-          id: statusToastID,
-          // https://sonner.emilkowal.ski/toast#api-reference
-          duration: 4000,
-        });
-      }
+      toast.success('Successfully processed all images', {
+        id: statusToastID,
+        // https://sonner.emilkowal.ski/toast#api-reference
+        duration: 4000,
+      });
 
       form.reset();
 
@@ -360,9 +410,7 @@ const AppPage = () => {
     } catch (error) {
       chat.setMessages([]);
 
-      await deleteLockMutation.mutateAsync({
-        options: lastLock,
-      });
+      await lockRemoveMutation.mutateAsync(lastLock);
 
       throw error;
     } finally {
@@ -388,7 +436,7 @@ const AppPage = () => {
     <div className=" mx-auto flex w-[680px] flex-col gap-y-16 py-[10%]">
       <Card>
         <CardHeader>
-          <CardTitle>Upload Images</CardTitle>
+          <CardTitle>Process Images</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-y-8">
           <Form {...form}>
@@ -503,7 +551,7 @@ const AppPage = () => {
                 type="submit"
                 disabled={isRunning || healthQuery.data?.Health.Ollama !== 'OK'}
               >
-                Upload
+                Process
               </Button>
               {isRunning !== true &&
               typeof healthQuery.data !== 'undefined' &&

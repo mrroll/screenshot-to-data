@@ -20,7 +20,7 @@ export const shared = z.object({
     .string()
     .optional()
     .default(
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd5d2h2bnJ6cnVtaXJkdnVlZm5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTA4NTg0NzMsImV4cCI6MjAyNjQzNDQ3M30.KZ7rbWLdN2Z9L_a6q48PHjtoo9JyZpxGRYyAU2uga8Y',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd5d2h2bnJ6cnVtaXJkdnVlZm5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTI4OTg3NDMsImV4cCI6MjAyODQ3NDc0M30.pxlPfcCGecnGnDtNyZsjnkbkO1pCzP7OdsN9fxDc4fg',
     ),
   NEXT_PUBLIC_SUPABASE_COOKIE_NAME: z
     .string()
@@ -30,5 +30,3 @@ export const shared = z.object({
   // AWS
   NEXT_PUBLIC_S3_BUCKET_PREFIX: z.string().optional().default('development/'),
 });
-
-shared.parse({});

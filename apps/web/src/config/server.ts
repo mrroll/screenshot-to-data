@@ -33,6 +33,11 @@ export const config = z
     REDIS_PASSWORD: z.string(),
     REDIS_KEY_PREFIX: z.string().optional().default('development:'),
 
+    // SSH Credentials
+    ID_RSA_USER: z.string(),
+    ID_RSA: z.string(),
+    ID_RSA_PUB: z.string(),
+
     // Supabase
     SUPABASE_JWT_SECRET: z.string(),
 
@@ -56,6 +61,7 @@ export const config = z
       ])
       .optional()
       .default('llava:34b'),
+    OLLAMA_SSH_HOST: z.string().ip({ version: 'v4' }),
 
     // Vercel
     VERCEL_ENV: z

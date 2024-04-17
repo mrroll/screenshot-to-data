@@ -12,6 +12,6 @@ module.exports = {
     require.resolve('@pluslabs/style-guide/eslint/typescript-strict'),
     require.resolve('@pluslabs/style-guide/eslint/react'),
     require.resolve('@pluslabs/style-guide/eslint/next'),
-    require.resolve('@pluslabs/style-guide/eslint/drizzle'),
+    require.resolve('@pluslabs/style-guide/eslint/project-structure'),
   ],
 };

@@ -1,6 +1,6 @@
 import { type Resolvers } from '@/graphql/codegen/resolvers';
-import { ScreenshotsQuery } from '@/graphql/schema/Objects/Screenshot/queries/list';
-import { ScreenshotQuery } from '@/graphql/schema/Objects/Screenshot/queries/read';
+import { ScreenshotQuery } from '@/graphql/schema/Objects/Screenshot/queries/screenshot';
+import { ScreenshotsQuery } from '@/graphql/schema/Objects/Screenshot/queries/screenshots';
 
 export const ScreenshotResolvers: Resolvers = {
   Query: {

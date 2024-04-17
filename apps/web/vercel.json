@@ -1,13 +1,18 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": ["hnd1"],
+  "installCommand": "npx bun@1.1.3 install",
   "functions": {
-    "src/app/api/chat/**/*": {
+    "src/app/api/chat/route.ts": {
       "memory": 384,
       "maxDuration": 300
     },
-    "src/pages/api/graphql": {
+    "src/app/api/graphql/route.ts": {
       "memory": 384,
       "maxDuration": 15
+    },
+    "src/app/**/*": {
+      "memory": 384
     }
   }
 }

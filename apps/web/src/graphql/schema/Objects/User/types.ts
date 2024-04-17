@@ -36,6 +36,7 @@ export const UserTypes = /* GraphQL */ `
     is_sso_user: Boolean
     deleted_at: DateTimeISO
     is_anonymous: Boolean
+
     user_preference: UserPreference
     screenshot: [Screenshot]
   }
@@ -44,5 +45,23 @@ export const UserTypes = /* GraphQL */ `
     CUID2: String!
     Prompt: String
     user: User
+  }
+
+  type Query {
+    CurrentUser: User!
+  }
+
+  input UserPreferenceInput {
+    Prompt: String
+  }
+
+  type CurrentUserMutationOutput {
+    user_preference: UserPreference
+  }
+
+  type Mutation {
+    CurrentUser(
+      user_preference: UserPreferenceInput!
+    ): CurrentUserMutationOutput!
   }
 `;

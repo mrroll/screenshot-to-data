@@ -1,4 +1,3 @@
-// This type is from Supabase which uses snake_case for column names.
 export const HealthTypes = /* GraphQL */ `
   type Health {
     Ollama: String!
@@ -6,5 +5,9 @@ export const HealthTypes = /* GraphQL */ `
 
   type Query {
     Health: Health!
+  }
+
+  type Mutation {
+    Health(Ollama: Boolean): Health!
   }
 `;

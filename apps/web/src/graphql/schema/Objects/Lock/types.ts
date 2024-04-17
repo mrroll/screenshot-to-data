@@ -1,12 +1,4 @@
-// This type is from Supabase which uses snake_case for column names.
 export const LockTypes = /* GraphQL */ `
-  input LockMutationInput {
-    key: String
-    owner: String
-    ttl: SafeInt
-    expirationTime: SafeInt
-  }
-
   type Lock {
     key: String
     owner: String
@@ -15,7 +7,12 @@ export const LockTypes = /* GraphQL */ `
   }
 
   type Mutation {
-    Lock(options: LockMutationInput): Lock!
-    DeleteLock(options: LockMutationInput): Void
+    Lock(key: String, ttl: SafeInt): Lock!
+    LockRemove(
+      key: String
+      owner: String
+      ttl: SafeInt
+      expirationTime: SafeInt
+    ): Void
   }
 `;

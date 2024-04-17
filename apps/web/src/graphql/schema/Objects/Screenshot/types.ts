@@ -14,18 +14,16 @@ export const ScreenshotTypes = /* GraphQL */ `
     user: User
   }
 
-  input ScreenshotsQueryInput {
-    first: Int
-    after: String
-    last: Int
-    before: String
-    orderBy: String
-    orderByDirection: String
-  }
-
   type Query {
     Screenshot(CUID2: String!): Screenshot!
-
-    Screenshots(options: ScreenshotsQueryInput): [Screenshot!]!
+    Screenshots(
+      first: Int
+      after: String
+      last: Int
+      before: String
+      limit: Int
+      orderBy: String
+      orderByDirection: String
+    ): [Screenshot!]!
   }
 `;

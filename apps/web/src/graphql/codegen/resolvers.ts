@@ -16,13 +16,9 @@ export type Scalars = {
   Int: { input: number; output: number; }
   Float: { input: number; output: number; }
   DateTimeISO: { input: any; output: any; }
-  JSON: { input: any; output: any; }
+  JSON: { input: unknown; output: unknown; }
   SafeInt: { input: number; output: number; }
   Void: { input: null; output: null; }
-};
-
-export type CurrentUserMutationInput = {
-  user_preference?: InputMaybe<UserPreferenceInput>;
 };
 
 export type CurrentUserMutationOutput = {
@@ -30,24 +26,9 @@ export type CurrentUserMutationOutput = {
   user_preference?: Maybe<UserPreference>;
 };
 
-export type GenerateS3SignedUrlMutationInput = {
-  name: Scalars['String']['input'];
-};
-
-export type GenerateS3SignedUrlMutationOutput = {
-  __typename?: 'GenerateS3SignedURLMutationOutput';
-  URL: Scalars['String']['output'];
-  exists: Scalars['Boolean']['output'];
-  name: Scalars['String']['output'];
-};
-
 export type Health = {
   __typename?: 'Health';
   Ollama: Scalars['String']['output'];
-};
-
-export type HealthMutationInput = {
-  Ollama?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type Lock = {
@@ -58,45 +39,42 @@ export type Lock = {
   ttl?: Maybe<Scalars['SafeInt']['output']>;
 };
 
-export type LockMutationInput = {
+export type Mutation = {
+  __typename?: 'Mutation';
+  CurrentUser: CurrentUserMutationOutput;
+  Health: Health;
+  Lock: Lock;
+  LockRemove?: Maybe<Scalars['Void']['output']>;
+  S3SignedURLs: Array<S3SignedUrLsOutput>;
+};
+
+
+export type MutationCurrentUserArgs = {
+  user_preference: UserPreferenceInput;
+};
+
+
+export type MutationHealthArgs = {
+  Ollama?: InputMaybe<Scalars['Boolean']['input']>;
+};
+
+
+export type MutationLockArgs = {
+  key?: InputMaybe<Scalars['String']['input']>;
+  ttl?: InputMaybe<Scalars['SafeInt']['input']>;
+};
+
+
+export type MutationLockRemoveArgs = {
   expirationTime?: InputMaybe<Scalars['SafeInt']['input']>;
   key?: InputMaybe<Scalars['String']['input']>;
   owner?: InputMaybe<Scalars['String']['input']>;
   ttl?: InputMaybe<Scalars['SafeInt']['input']>;
 };
 
-export type Mutation = {
-  __typename?: 'Mutation';
-  CurrentUser: CurrentUserMutationOutput;
-  DeleteLock?: Maybe<Scalars['Void']['output']>;
-  GenerateS3SignedURLs: Array<GenerateS3SignedUrlMutationOutput>;
-  Health: Health;
-  Lock: Lock;
-};
 
-
-export type MutationCurrentUserArgs = {
-  options: CurrentUserMutationInput;
-};
-
-
-export type MutationDeleteLockArgs = {
-  options?: InputMaybe<LockMutationInput>;
-};
-
-
-export type MutationGenerateS3SignedUrLsArgs = {
-  options: Array<GenerateS3SignedUrlMutationInput>;
-};
-
-
-export type MutationHealthArgs = {
-  options?: InputMaybe<HealthMutationInput>;
-};
-
-
-export type MutationLockArgs = {
-  options?: InputMaybe<LockMutationInput>;
+export type MutationS3SignedUrLsArgs = {
+  S3SignedURLs: Array<S3SignedUrLsInput>;
 };
 
 export type Query = {
@@ -114,7 +92,24 @@ export type QueryScreenshotArgs = {
 
 
 export type QueryScreenshotsArgs = {
-  options?: InputMaybe<ScreenshotsQueryInput>;
+  after?: InputMaybe<Scalars['String']['input']>;
+  before?: InputMaybe<Scalars['String']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<Scalars['String']['input']>;
+  orderByDirection?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type S3SignedUrLsInput = {
+  name: Scalars['String']['input'];
+};
+
+export type S3SignedUrLsOutput = {
+  __typename?: 'S3SignedURLsOutput';
+  URL: Scalars['String']['output'];
+  exists: Scalars['Boolean']['output'];
+  name: Scalars['String']['output'];
 };
 
 export type Screenshot = {
@@ -129,15 +124,6 @@ export type Screenshot = {
   UpdatedAt?: Maybe<Scalars['DateTimeISO']['output']>;
   Width?: Maybe<Scalars['Int']['output']>;
   user?: Maybe<User>;
-};
-
-export type ScreenshotsQueryInput = {
-  after?: InputMaybe<Scalars['String']['input']>;
-  before?: InputMaybe<Scalars['String']['input']>;
-  first?: InputMaybe<Scalars['Int']['input']>;
-  last?: InputMaybe<Scalars['Int']['input']>;
-  orderBy?: InputMaybe<Scalars['String']['input']>;
-  orderByDirection?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type User = {
@@ -265,22 +251,18 @@ export type DirectiveResolverFn<TResult = {}, TParent = {}, TContext = {}, TArgs
 /** Mapping between all available schema types and the resolvers types */
 export type ResolversTypes = ResolversObject<{
   Boolean: ResolverTypeWrapper<Scalars['Boolean']['output']>;
-  CurrentUserMutationInput: CurrentUserMutationInput;
   CurrentUserMutationOutput: ResolverTypeWrapper<CurrentUserMutationOutput>;
   DateTimeISO: ResolverTypeWrapper<Scalars['DateTimeISO']['output']>;
-  GenerateS3SignedURLMutationInput: GenerateS3SignedUrlMutationInput;
-  GenerateS3SignedURLMutationOutput: ResolverTypeWrapper<GenerateS3SignedUrlMutationOutput>;
   Health: ResolverTypeWrapper<Health>;
-  HealthMutationInput: HealthMutationInput;
   Int: ResolverTypeWrapper<Scalars['Int']['output']>;
   JSON: ResolverTypeWrapper<Scalars['JSON']['output']>;
   Lock: ResolverTypeWrapper<Lock>;
-  LockMutationInput: LockMutationInput;
   Mutation: ResolverTypeWrapper<{}>;
   Query: ResolverTypeWrapper<{}>;
+  S3SignedURLsInput: S3SignedUrLsInput;
+  S3SignedURLsOutput: ResolverTypeWrapper<S3SignedUrLsOutput>;
   SafeInt: ResolverTypeWrapper<Scalars['SafeInt']['output']>;
   Screenshot: ResolverTypeWrapper<Screenshot>;
-  ScreenshotsQueryInput: ScreenshotsQueryInput;
   String: ResolverTypeWrapper<Scalars['String']['output']>;
   User: ResolverTypeWrapper<User>;
   UserPreference: ResolverTypeWrapper<UserPreference>;
@@ -291,22 +273,18 @@ export type ResolversTypes = ResolversObject<{
 /** Mapping between all available schema types and the resolvers parents */
 export type ResolversParentTypes = ResolversObject<{
   Boolean: Scalars['Boolean']['output'];
-  CurrentUserMutationInput: CurrentUserMutationInput;
   CurrentUserMutationOutput: CurrentUserMutationOutput;
   DateTimeISO: Scalars['DateTimeISO']['output'];
-  GenerateS3SignedURLMutationInput: GenerateS3SignedUrlMutationInput;
-  GenerateS3SignedURLMutationOutput: GenerateS3SignedUrlMutationOutput;
   Health: Health;
-  HealthMutationInput: HealthMutationInput;
   Int: Scalars['Int']['output'];
   JSON: Scalars['JSON']['output'];
   Lock: Lock;
-  LockMutationInput: LockMutationInput;
   Mutation: {};
   Query: {};
+  S3SignedURLsInput: S3SignedUrLsInput;
+  S3SignedURLsOutput: S3SignedUrLsOutput;
   SafeInt: Scalars['SafeInt']['output'];
   Screenshot: Screenshot;
-  ScreenshotsQueryInput: ScreenshotsQueryInput;
   String: Scalars['String']['output'];
   User: User;
   UserPreference: UserPreference;
@@ -322,13 +300,6 @@ export type CurrentUserMutationOutputResolvers<ContextType = TContextType, Paren
 export interface DateTimeIsoScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes['DateTimeISO'], any> {
   name: 'DateTimeISO';
 }
-
-export type GenerateS3SignedUrlMutationOutputResolvers<ContextType = TContextType, ParentType extends ResolversParentTypes['GenerateS3SignedURLMutationOutput'] = ResolversParentTypes['GenerateS3SignedURLMutationOutput']> = ResolversObject<{
-  URL?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  exists?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
-  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
-}>;
 
 export type HealthResolvers<ContextType = TContextType, ParentType extends ResolversParentTypes['Health'] = ResolversParentTypes['Health']> = ResolversObject<{
   Ollama?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
@@ -348,11 +319,11 @@ export type LockResolvers<ContextType = TContextType, ParentType extends Resolve
 }>;
 
 export type MutationResolvers<ContextType = TContextType, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = ResolversObject<{
-  CurrentUser?: Resolver<ResolversTypes['CurrentUserMutationOutput'], ParentType, ContextType, RequireFields<MutationCurrentUserArgs, 'options'>>;
-  DeleteLock?: Resolver<Maybe<ResolversTypes['Void']>, ParentType, ContextType, Partial<MutationDeleteLockArgs>>;
-  GenerateS3SignedURLs?: Resolver<Array<ResolversTypes['GenerateS3SignedURLMutationOutput']>, ParentType, ContextType, RequireFields<MutationGenerateS3SignedUrLsArgs, 'options'>>;
+  CurrentUser?: Resolver<ResolversTypes['CurrentUserMutationOutput'], ParentType, ContextType, RequireFields<MutationCurrentUserArgs, 'user_preference'>>;
   Health?: Resolver<ResolversTypes['Health'], ParentType, ContextType, Partial<MutationHealthArgs>>;
   Lock?: Resolver<ResolversTypes['Lock'], ParentType, ContextType, Partial<MutationLockArgs>>;
+  LockRemove?: Resolver<Maybe<ResolversTypes['Void']>, ParentType, ContextType, Partial<MutationLockRemoveArgs>>;
+  S3SignedURLs?: Resolver<Array<ResolversTypes['S3SignedURLsOutput']>, ParentType, ContextType, RequireFields<MutationS3SignedUrLsArgs, 'S3SignedURLs'>>;
 }>;
 
 export type QueryResolvers<ContextType = TContextType, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = ResolversObject<{
@@ -360,6 +331,13 @@ export type QueryResolvers<ContextType = TContextType, ParentType extends Resolv
   Health?: Resolver<ResolversTypes['Health'], ParentType, ContextType>;
   Screenshot?: Resolver<ResolversTypes['Screenshot'], ParentType, ContextType, RequireFields<QueryScreenshotArgs, 'CUID2'>>;
   Screenshots?: Resolver<Array<ResolversTypes['Screenshot']>, ParentType, ContextType, Partial<QueryScreenshotsArgs>>;
+}>;
+
+export type S3SignedUrLsOutputResolvers<ContextType = TContextType, ParentType extends ResolversParentTypes['S3SignedURLsOutput'] = ResolversParentTypes['S3SignedURLsOutput']> = ResolversObject<{
+  URL?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  exists?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 }>;
 
 export interface SafeIntScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes['SafeInt'], any> {
@@ -435,12 +413,12 @@ export interface VoidScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes
 export type Resolvers<ContextType = TContextType> = ResolversObject<{
   CurrentUserMutationOutput?: CurrentUserMutationOutputResolvers<ContextType>;
   DateTimeISO?: GraphQLScalarType;
-  GenerateS3SignedURLMutationOutput?: GenerateS3SignedUrlMutationOutputResolvers<ContextType>;
   Health?: HealthResolvers<ContextType>;
   JSON?: GraphQLScalarType;
   Lock?: LockResolvers<ContextType>;
   Mutation?: MutationResolvers<ContextType>;
   Query?: QueryResolvers<ContextType>;
+  S3SignedURLsOutput?: S3SignedUrLsOutputResolvers<ContextType>;
   SafeInt?: GraphQLScalarType;
   Screenshot?: ScreenshotResolvers<ContextType>;
   User?: UserResolvers<ContextType>;

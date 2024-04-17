@@ -11,7 +11,8 @@ generate(
         config: {
           useIndexSignature: true,
           scalars: {
-            DateTime: { input: 'Date', output: 'Date' },
+            DateTimeISO: { input: 'Date', output: 'Date' },
+            JSON: { input: 'unknown', output: 'unknown' },
             SafeInt: { input: 'number', output: 'number' },
             Void: { input: 'null', output: 'null' },
           },

@@ -10,7 +10,7 @@ import {
 } from '@screenshot-to-data/common/dist/s3';
 import {
   AIStream,
-  experimental_StreamData,
+  StreamData,
   StreamingTextResponse,
   type AIStreamCallbacksAndOptions,
 } from 'ai';
@@ -28,12 +28,7 @@ import { config } from '@/config/server';
 import { getUserFromCookie } from '@/utilities/server/get-user-from-cookie';
 import { resizeImageToLlavaSupportedResolution } from '@/utilities/server/resize-image-to-llava-supported-resolution';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-export const fetchCache = 'only-no-store';
-
-// eslint-disable-next-line @typescript-eslint/naming-convention -- https://sdk.vercel.ai/docs/api-reference/stream-data
-const experimental_StreamDataEnabled = true as boolean;
+const StreamDataEnabled = true as boolean;
 // https://github.com/vercel/ai/blob/9610993fe4df5a2ae8e9ce4650b6f9f0f9291e58/packages/core/shared/stream-parts.ts#L17
 const TEXT_STREAM_PART_CODE = '0';
 
@@ -45,7 +40,7 @@ const parseLlavaStream = (raw: string) => {
     })
     .parse(JSON.parse(raw));
 
-  if (experimental_StreamDataEnabled) {
+  if (StreamDataEnabled) {
     // https://github.com/vercel/ai/blob/9610993fe4df5a2ae8e9ce4650b6f9f0f9291e58/packages/core/shared/stream-parts.ts#L373
     return `${TEXT_STREAM_PART_CODE}:${JSON.stringify(data.response)}\n`;
   }
@@ -60,7 +55,10 @@ const LlavaStream = (
   return AIStream(res, parseLlavaStream, cb);
 };
 
-export async function POST(req: Request) {
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'only-no-store';
+export const POST = async (req: Request) => {
   const cookieStore = cookies();
 
   const cookie = cookieStore.get(config.NEXT_PUBLIC_SUPABASE_COOKIE_NAME);
@@ -181,13 +179,11 @@ export async function POST(req: Request) {
     },
     body: JSON.stringify({
       model: config.OLLAMA_API_MODEL,
+      // https://github.com/ollama/ollama/blob/4c7db6b7e917ef475a9d5dccd180cefd298175e4/docs/faq.md#how-do-i-keep-a-model-loaded-in-memory-or-make-it-unload-immediately
+      keep_alive: -1,
       stream: true,
       prompt,
       images: [base64],
-      // https://github.com/ollama/ollama/issues/1863#issuecomment-2042900528
-      options: {
-        num_keep: 0,
-      },
     }),
   });
 
@@ -198,6 +194,12 @@ export async function POST(req: Request) {
 
     throw error;
   });
+
+  if (request.status !== 200) {
+    // https://twitter.com/cramforce/status/1762167024900575407
+    await request.body?.cancel();
+    return new NextResponse('Service Unavailable', { status: 503 });
+  }
 
   clearTimeout(timeout);
 
@@ -213,15 +215,15 @@ export async function POST(req: Request) {
     return new NextResponse('Bad Request', { status: 400 });
   }
 
-  const data = new experimental_StreamData();
+  const data = new StreamData();
 
   // eslint-disable-next-line @typescript-eslint/naming-convention -- experimental api
   let experimental_StreamDataDescription = '';
 
   const llavaStream = LlavaStream(request, {
-    experimental_streamData: experimental_StreamDataEnabled,
+    experimental_streamData: StreamDataEnabled,
     onToken: (token) => {
-      if (experimental_StreamDataEnabled !== true) {
+      if (StreamDataEnabled !== true) {
         return;
       }
 
@@ -272,7 +274,7 @@ export async function POST(req: Request) {
         throw new Error('Could not read metadata');
       }
 
-      const Description = experimental_StreamDataEnabled
+      const Description = StreamDataEnabled
         ? experimental_StreamDataDescription
         : completion;
 
@@ -310,6 +312,6 @@ export async function POST(req: Request) {
   return new StreamingTextResponse(
     llavaStream,
     {},
-    experimental_StreamDataEnabled ? data : undefined,
+    StreamDataEnabled ? data : undefined,
   );
-}
+};

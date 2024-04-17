@@ -1,7 +1,6 @@
-import { GenerateS3SignedURLsTypes } from '@/graphql/schema/Mutations/GenerateS3SignedURLs/types';
-import { CurrentUserTypes } from '@/graphql/schema/Objects/CurrentUser/types';
 import { HealthTypes } from '@/graphql/schema/Objects/Health/types';
 import { LockTypes } from '@/graphql/schema/Objects/Lock/types';
+import { S3SignedURLTypes } from '@/graphql/schema/Objects/S3SignedURL/types';
 import { ScreenshotTypes } from '@/graphql/schema/Objects/Screenshot/types';
 import { UserTypes } from '@/graphql/schema/Objects/User/types';
 import { DateTimeISOTypes } from '@/graphql/schema/Scalars/DateTimeISO/types';
@@ -17,12 +16,9 @@ export const typeDefs = [
   VoidTypes,
 
   // Objects
-  CurrentUserTypes,
   HealthTypes,
   LockTypes,
+  S3SignedURLTypes,
   ScreenshotTypes,
   UserTypes,
-
-  // Mutations
-  GenerateS3SignedURLsTypes,
 ];

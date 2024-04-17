@@ -6,6 +6,7 @@ export const graphql = initGraphQLTada<{
   introspection: introspection;
   scalars: {
     DateTimeISO: string;
+    JSON: unknown;
     Void: null;
     SafeInt: number;
   };

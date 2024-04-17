@@ -11,6 +11,7 @@ module.exports = (phase, { defaultConfig }) => {
     },
     experimental: {
       typedRoutes: true,
+      serverComponentsExternalPackages: ['node-ssh', '@verrou/core'],
     },
   };
 

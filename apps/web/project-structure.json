@@ -1,0 +1,50 @@
+{
+  "$schema": "../../node_modules/eslint-plugin-project-structure/projectStructure.schema.json",
+  "structure": {
+    "children": [
+      { "name": "/.+/" },
+      {
+        "name": "src",
+        "children": [
+          { "name": "/.+/" },
+          {
+            "name": "graphql",
+            "children": [
+              { "name": "/.+/" },
+              {
+                "name": "schema",
+                "children": [
+                  { "name": "/.+/" },
+                  {
+                    "name": "Objects",
+                    "children": [
+                      {
+                        "name": "/^${{PascalCase}}$/",
+                        "children": [
+                          {
+                            "name": "/^(mutations|queries)$/",
+                            "children": [
+                              {
+                                "name": "/${{kebab-case}}/",
+                                "children": [
+                                  { "name": "args", "extension": "ts" },
+                                  { "name": "index", "extension": "ts" }
+                                ]
+                              }
+                            ]
+                          },
+                          { "name": "types", "extension": "ts" },
+                          { "name": "resolvers", "extension": "ts" }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

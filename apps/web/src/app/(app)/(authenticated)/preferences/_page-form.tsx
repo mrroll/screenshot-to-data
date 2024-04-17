@@ -25,8 +25,8 @@ const formSchema = z.object({
 });
 
 const CurrentUserMutation = graphql(`
-  mutation CurrentUserMutation($options: CurrentUserMutationInput!) {
-    CurrentUser(options: $options) {
+  mutation CurrentUserMutation($user_preference: UserPreferenceInput!) {
+    CurrentUser(user_preference: $user_preference) {
       user_preference {
         Prompt
       }
@@ -68,7 +68,7 @@ export const PreferencesPageForm = (props: {
     ) as typeof values;
 
     const promise = mutation.mutateAsync({
-      options: { user_preference: updated },
+      user_preference: updated,
     });
 
     toast.promise(promise, {
