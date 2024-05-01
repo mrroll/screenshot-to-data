@@ -88,11 +88,12 @@ model user {
 }
 
 model user_preference {
-    Id     Int     @id @default(autoincrement())
-    UUID   String  @unique @default(dbgenerated("gen_random_uuid()")) @db.Char(36)
+    Id                  Int     @id @default(autoincrement())
+    UUID                String  @unique @default(dbgenerated("gen_random_uuid()")) @db.Char(36)
     // user_preference_xxxxxxxxxxxxxxxxxxxxxxxx
-    CUID2  String  @unique @default("") @db.Char(40)
-    Prompt String?
+    CUID2               String  @unique @default("") @db.Char(40)
+    Prompt              String?
+    ImageResizeStrategy String?
 
     CreatedAt DateTime @default(now()) @db.Timestamptz(3)
     UpdatedAt DateTime @default(now()) @db.Timestamptz(3)

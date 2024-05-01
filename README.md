@@ -16,5 +16,5 @@
   - https://docs.aws.amazon.com/AmazonS3/latest/userguide/ways-to-add-notification-config-to-bucket.html#step1-create-sns-topic-for-notification
 - [ ] Supabase requires Redirect URLs to be set
 - [ ] Supabase probably needs SES instead of the built in one.
-- [ ] We are borrowing Magic LLM's Redis instance. We really want our own here.
+- [ ] We are borrowing Magic LLM's Redis instance. We really want of our own here.
 - [ ] Vercel, Supabase, and S3 regions should all be the same.

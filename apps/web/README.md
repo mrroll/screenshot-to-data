@@ -1,6 +1,9 @@
 # TODO
 
-- [ ] Add ESLint Plugin for file and folder structure to sytle guide and figure out a way if we can automatically enable it if it finds the project-structure.json file
+- [ ] Change the way we do Redis keys.
+- [ ] A different prompt should be a different entry in the database
+  - [ ] Add a way for users to see which prompt was used in the screenshots page.
+    - See the [note](https://developer.mozilla.org/en-US/docs/Web/API/Window/beforeunload_event) about the unreliable nature of beforeunload.
 - [ ] Stop chat on exit
 - [ ] Add filter
 - [ ] Move server packages to common

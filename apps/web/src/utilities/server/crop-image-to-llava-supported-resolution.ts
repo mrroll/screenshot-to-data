@@ -7,7 +7,7 @@ const optionsSchema = z.object({
   image: z.instanceof(Buffer),
 });
 
-export const resizeImageToLlavaSupportedResolution = async (
+export const cropImageToLlavaSupportedResolution = async (
   options: z.infer<typeof optionsSchema>,
 ) => {
   const args = optionsSchema.parse(options);
@@ -70,21 +70,6 @@ export const resizeImageToLlavaSupportedResolution = async (
     throw new Error('Could not find longSideAllowedSize');
   }
 
-  const longSideResizeScale = longSideAllowedSize / longSideSize;
-
-  const longSideResizeWidth =
-    longSideResizeScale > 1
-      ? originalSharpImageMetadataWidth
-      : Math.round(originalSharpImageMetadataWidth * longSideResizeScale);
-
-  const longSideResizeHeight =
-    longSideResizeScale > 1
-      ? originalSharpImageMetadataHeight
-      : Math.round(originalSharpImageMetadataHeight * longSideResizeScale);
-
-  const shortSideSize =
-    orientation === 'landscape' ? longSideResizeHeight : longSideResizeWidth;
-
   const shortSideSizeAccessor =
     orientation === 'landscape' ? 'height' : 'width';
 
@@ -100,22 +85,36 @@ export const resizeImageToLlavaSupportedResolution = async (
     throw new Error('Could not find shortSizeAllowedSize');
   }
 
-  const shortSideResizeScale = shortSideAllowedSize / shortSideSize;
+  const cropOptions: Parameters<(typeof originalSharpImage)['extract']>[0] = {
+    top: 0,
+    left: 0,
+    width: 0,
+    height: 0,
+  };
 
-  const shortSideResizeWidth =
-    shortSideResizeScale > 1
-      ? longSideResizeWidth
-      : Math.round(longSideResizeWidth * shortSideResizeScale);
+  const originalSharpImageMetadataLongSideSizeAccessor =
+    originalSharpImageMetadata[longSideSizeAccessor];
+  const originalSharpImageMetadataShortSideSizeAccessor =
+    originalSharpImageMetadata[shortSideSizeAccessor];
 
-  const shortSideResizeHeight =
-    shortSideResizeScale > 1
-      ? longSideResizeHeight
-      : Math.round(longSideResizeHeight * shortSideResizeScale);
+  if (
+    typeof originalSharpImageMetadataLongSideSizeAccessor !== 'number' ||
+    typeof originalSharpImageMetadataShortSideSizeAccessor !== 'number'
+  ) {
+    throw new Error('Could not read originalSharpImageMetadata');
+  }
 
-  const resized = originalSharpImage.resize(
-    shortSideResizeWidth,
-    shortSideResizeHeight,
-  );
+  cropOptions[longSideSizeAccessor] =
+    longSideAllowedSize > originalSharpImageMetadataLongSideSizeAccessor
+      ? originalSharpImageMetadataLongSideSizeAccessor
+      : longSideAllowedSize;
 
-  return resized.toBuffer();
+  cropOptions[shortSideSizeAccessor] =
+    shortSideAllowedSize > originalSharpImageMetadataShortSideSizeAccessor
+      ? originalSharpImageMetadataShortSideSizeAccessor
+      : shortSideAllowedSize;
+
+  const cropped = originalSharpImage.extract(cropOptions);
+
+  return cropped.toBuffer();
 };

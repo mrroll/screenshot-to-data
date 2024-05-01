@@ -1,7 +1,4 @@
-- [ ] confirmed_at is not actually synced. We may need to update the migration to sync it the first time around
-
-<!-- TODO -->
-<!-- Actually write this -->
+# Prisma
 
 ## Migrations
 
@@ -9,12 +6,14 @@
 2. Review/edit migration
 3. npx prisma migrate dev
 
-##
+## Rolling Back Changes
 
-1. Roll changes back
-   https://www.prisma.io/docs/orm/prisma-migrate/workflows/generating-down-migrations might help
-2. Delete row for migration
+1. Manually run SQL to roll changes back
 
-##
+- https://www.prisma.io/docs/orm/prisma-migrate/workflows/generating-down-migrations could be useful
 
-https://www.prisma.io/docs/orm/prisma-migrate/workflows/patching-and-hotfixing
+2. Delete row from `_prisma_migrations`
+
+## Patching
+
+- https://www.prisma.io/docs/orm/prisma-migrate/workflows/patching-and-hotfixing
